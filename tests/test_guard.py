@@ -3,7 +3,6 @@
 from unittest.mock import patch
 
 from ceramicraft_customer_support_agent.guard import (
-    AUTH_REQUIRED_OPERATIONS,
     SENSITIVE_OPERATIONS,
     build_guard,
 )
@@ -13,18 +12,6 @@ def test_sensitive_operations_defined():
     """SENSITIVE_OPERATIONS should contain expected operations."""
     expected_sensitive = {"delete_address", "confirm_receipt"}
     assert SENSITIVE_OPERATIONS == expected_sensitive
-
-
-def test_auth_required_operations_defined():
-    """AUTH_REQUIRED_OPERATIONS should contain expected operations."""
-    # Check that it includes the major categories
-    cart_ops = {"get_cart", "add_to_cart", "update_cart_item", "remove_cart_item"}
-    order_ops = {"list_my_orders", "get_order_detail", "create_order"}
-    account_ops = {"get_my_profile", "update_my_profile", "delete_address"}
-
-    assert cart_ops.issubset(AUTH_REQUIRED_OPERATIONS)
-    assert order_ops.issubset(AUTH_REQUIRED_OPERATIONS)
-    assert account_ops.issubset(AUTH_REQUIRED_OPERATIONS)
 
 
 def test_build_guard():

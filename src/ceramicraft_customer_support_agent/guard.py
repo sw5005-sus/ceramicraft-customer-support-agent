@@ -9,28 +9,12 @@ logger = logging.getLogger(__name__)
 # Operations that require confirmation
 SENSITIVE_OPERATIONS = {"delete_address", "confirm_receipt"}
 
-# Operations that require authentication
-AUTH_REQUIRED_OPERATIONS = {
-    "get_cart",
-    "add_to_cart",
-    "update_cart_item",
-    "remove_cart_item",
-    "estimate_cart_price",
-    "list_my_orders",
-    "get_order_detail",
-    "confirm_receipt",
-    "get_order_stats",
-    "create_order",
-    "create_review",
-    "like_review",
-    "get_user_reviews",
-    "get_my_profile",
-    "update_my_profile",
-    "list_my_addresses",
-    "create_address",
-    "update_address",
-    "delete_address",
-}
+# Pre-compiled regex for detecting auth-related error messages.
+# Uses word boundaries to avoid false positives on "author", "authority", etc.
+_AUTH_ERROR_PATTERN = re.compile(
+    r"\b(auth(?:entication|orization)?|login|log[\s-]?in|unauthorized|unauthenticated)\b",
+    re.IGNORECASE,
+)
 
 
 def build_guard() -> Callable:
@@ -60,13 +44,8 @@ def build_guard() -> Callable:
         for msg in recent_messages:
             msg_content = str(msg.content) if hasattr(msg, "content") else str(msg)
 
-            # Check for auth-related errors in responses (word boundaries
-            # to avoid false positives like "author", "authority")
-            _auth_pattern = re.compile(
-                r"\b(auth(?:entication|orization)?|login|log[\s-]?in|unauthorized|unauthenticated)\b",
-                re.IGNORECASE,
-            )
-            if _auth_pattern.search(msg_content):
+            # Check for auth-related errors in responses
+            if _AUTH_ERROR_PATTERN.search(msg_content):
                 if not auth_token:
                     needs_auth_prompt = True
 

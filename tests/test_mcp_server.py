@@ -8,6 +8,14 @@ from mcp.server.fastmcp.exceptions import ToolError
 from ceramicraft_customer_support_agent import mcp_server
 
 
+@pytest.fixture(autouse=True)
+def _clear_agent_cache():
+    """Clear the agent cache between tests."""
+    mcp_server._agent_cache.clear()
+    yield
+    mcp_server._agent_cache.clear()
+
+
 def test_create_mcp_server_returns_fastmcp():
     """create_mcp_server should return a FastMCP instance."""
     mcp = mcp_server.create_mcp_server()

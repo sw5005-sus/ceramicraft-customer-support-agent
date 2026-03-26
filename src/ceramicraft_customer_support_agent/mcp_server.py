@@ -12,6 +12,10 @@ from ceramicraft_customer_support_agent.mcp_client import discover_tools, mcp_se
 
 logger = logging.getLogger(__name__)
 
+# Cache: once tools are discovered and the graph is compiled, reuse it.
+# Tools come from MCP Server and don't change at runtime.
+_agent_cache: dict[str, Any] = {}  # {"agent": compiled_graph}
+
 
 def _extract_bearer_token(ctx: Context) -> str | None:
     """Extract Bearer token from the incoming MCP request context.
@@ -79,8 +83,12 @@ def create_mcp_server() -> FastMCP:
 
         try:
             async with mcp_session(token=token) as session:
-                tools = await discover_tools(session)
-                agent = build_agent(tools)
+                # Build graph once; reuse on subsequent requests.
+                if "agent" not in _agent_cache:
+                    tools = await discover_tools(session)
+                    _agent_cache["agent"] = build_agent(tools)
+
+                agent = _agent_cache["agent"]
 
                 # Include auth token in the state for the new graph
                 initial_state = {
@@ -121,11 +129,10 @@ def create_mcp_server() -> FastMCP:
     ) -> dict[str, Any]:
         """Reset the conversation history for a given thread.
 
-        Note: Each chat invocation currently builds a fresh agent with its
-        own MemorySaver. Cross-request memory is not yet persisted, so this
-        is effectively a no-op. Kept for API compatibility; will gain real
-        functionality when a persistent checkpointer (e.g. Redis/Postgres)
-        replaces in-memory storage.
+        Note: The in-memory checkpointer (MemorySaver) loses state when the
+        process restarts. This endpoint is kept for API compatibility; it will
+        gain real clear functionality when a persistent checkpointer
+        (e.g. Redis/Postgres) replaces in-memory storage.
 
         Args:
             thread_id: Conversation thread identifier to reset.
