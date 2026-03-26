@@ -12,7 +12,7 @@ SENSITIVE_OPERATIONS = {"delete_address", "confirm_receipt"}
 # Pre-compiled regex for detecting auth-related error messages.
 # Uses word boundaries to avoid false positives on "author", "authority", etc.
 _AUTH_ERROR_PATTERN = re.compile(
-    r"\b(auth(?:entication|orization)?|login|log[\s-]?in|unauthorized|unauthenticated)\b",
+    r"\b(authentication|authorization|log[\s-]?in|unauthorized|unauthenticated)\b",
     re.IGNORECASE,
 )
 
