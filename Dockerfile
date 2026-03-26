@@ -8,9 +8,9 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source code
 COPY src/ src/
-COPY README.md ./
+COPY serve.py README.md ./
 RUN uv sync --frozen --no-dev
 
 EXPOSE 8080
 
-CMD ["uv", "run", "python", "-m", "ceramicraft_customer_support_agent.serve"]
+CMD ["uv", "run", "python", "serve.py"]

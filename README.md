@@ -29,7 +29,7 @@ Customer ──▶ Agent (LangGraph) ──MCP──▶ MCP Server ──HTTP─
 uv sync
 
 # Run
-uv run python -m ceramicraft_customer_support_agent.serve
+uv run python serve.py
 
 # Lint & format
 uv run ruff check .
