@@ -18,6 +18,51 @@ _最后更新：2026-03-26_
 
 ---
 
+## 架构设计
+
+### ReAct Agent 状态机
+
+```
+        ┌──────────────┐
+        │   LLM Node   │ ◀─── System Prompt + 对话历史 + Tool 结果
+        └──────┬───────┘
+               │
+        需要调 tool?
+        ┌──────┴──────┐
+        │ Yes         │ No
+        ▼             ▼
+  ┌───────────┐   ┌──────────┐
+  │ Tool Node │   │ 返回回复  │
+  └─────┬─────┘   └──────────┘
+        │
+        │ tool 结果
+        └──▶ 回到 LLM Node
+```
+
+LangGraph `create_react_agent` 实现 Reason → Act → Observe 循环。LLM 自主决定调哪个 tool、调几次、何时回复用户。
+
+### 工具发现
+
+Tools 从 ceramicraft-mcp-server **动态发现**（启动时拉取 `list_tools`），转换为 LangChain Tool 格式注入 agent。MCP Server 新增 tool 时 agent 无需改代码。
+
+### 对话隔离
+
+通过 `thread_id` 隔离多用户对话。每个用户独立的对话历史和上下文，`thread_id` 来源于用户标识。
+
+### Token 透传链路
+
+```
+用户 JWT ──▶ Agent (MCP Server, 提取 token) ──▶ ceramicraft-mcp-server (验证 JWT) ──▶ 后端
+```
+
+Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下游。
+
+### 渐进式披露
+
+体现在 System Prompt 设计：首次交互简短问候 + 概要能力介绍，用户追问时按需展开，不主动列出所有功能。
+
+---
+
 ## Phase 1 — 核心骨架
 
 **目标：跑通 MCP Server + MCP Client + LangGraph agent 的完整链路**
