@@ -7,7 +7,24 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 ## Architecture
 
 ```
-Customer ──▶ Agent (LangGraph) ──MCP──▶ MCP Server ──HTTP──▶ Backend Microservices
+                       ┌─────────────────────────────────┐
+                       │   Customer Support Agent         │
+  User / Orchestrator  │                                  │
+  ───MCP (chat)──────▶ │  FastMCP Server  ──▶  LangGraph  │
+                       │                       ReAct Agent│
+                       │                          │       │
+                       │                     MCP Client    │
+                       └──────────────────────│───────────┘
+                                              │
+                                         MCP (tools)
+                                              │
+                                              ▼
+                                    CeramiCraft MCP Server
+                                              │
+                                         HTTP (internal)
+                                              │
+                                              ▼
+                                      Backend Microservices
 ```
 
 ## Available Tools (via MCP)
@@ -16,11 +33,16 @@ Customer ──▶ Agent (LangGraph) ──MCP──▶ MCP Server ──HTTP─
 |----------|-------|------------|
 | Product | search_products, get_product | PUBLIC |
 | Cart | get_cart, add_to_cart, update_cart_item, remove_cart_item, estimate_cart_price | USER |
-| Order | create_order, list_my_orders, get_order_detail, confirm_receipt | USER |
+| Order | list_my_orders, get_order_detail | USER |
 | Review | list_product_reviews, get_user_reviews, create_review, like_review | PUBLIC / USER |
 | User | get_my_profile, update_my_profile, list_my_addresses, create_address, update_address, delete_address | USER |
-| Payment | get_pay_account, top_up_account | USER |
-| Notification | register_push_token | USER |
+
+## MCP Tools Exposed
+
+| Tool | Description |
+|------|-------------|
+| `chat` | Send a message to the customer support agent |
+| `reset_conversation` | Reset conversation history for a thread |
 
 ## Development
 
@@ -46,8 +68,10 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server-svc:8080/mcp` |
+| `MCP_SERVER_URL` | Downstream MCP Server endpoint | `http://mcp-server-svc:8080/mcp` |
 | `OPENAI_API_KEY` | OpenAI API key | *(required)* |
 | `OPENAI_MODEL` | OpenAI model name | `gpt-4o` |
+| `AGENT_HOST` | Agent server bind address | `0.0.0.0` |
+| `AGENT_PORT` | Agent server port | `8080` |
 | `LANGSMITH_API_KEY` | LangSmith tracing key | *(optional)* |
 | `LANGSMITH_PROJECT` | LangSmith project name | `ceramicraft-cs-agent` |
