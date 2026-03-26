@@ -1,7 +1,7 @@
 """Main LangGraph StateGraph for the Customer Support Agent."""
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Any, TypedDict
 
 from langchain_core.tools import BaseTool
@@ -35,7 +35,7 @@ class AgentState(TypedDict):
     confirmed: bool
 
 
-def build_graph(tools: list[BaseTool]) -> Any:
+def build_graph(tools: Sequence[BaseTool]) -> Any:
     """Build the main customer support agent graph.
 
     Creates a StateGraph with intent classification, domain routing,
@@ -51,7 +51,7 @@ def build_graph(tools: list[BaseTool]) -> Any:
     memory = MemorySaver()
 
     # Create the main graph
-    graph = StateGraph(AgentState)
+    graph = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
 
     # Build nodes
     classifier = build_classifier()

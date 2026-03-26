@@ -1,13 +1,13 @@
 """Domain-specific subgraph agents."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 import logging
 from typing import Any
 
 from langchain_core.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.prebuilt import create_react_agent
+from langgraph.prebuilt import create_react_agent  # ty: ignore[deprecated]
 
 from ceramicraft_customer_support_agent.config import get_settings
 
@@ -50,18 +50,18 @@ def _get_llm() -> ChatOpenAI:
     """Create a shared LLM instance from settings."""
     settings = get_settings()
     return ChatOpenAI(
-        model=settings.OPENAI_MODEL,
-        api_key=settings.OPENAI_API_KEY,
+        model=settings.OPENAI_MODEL,  # ty: ignore[unknown-argument]
+        api_key=settings.OPENAI_API_KEY,  # ty: ignore[unknown-argument]
     )
 
 
-def _filter_tools(all_tools: list[BaseTool], names: set[str]) -> list[BaseTool]:
+def _filter_tools(all_tools: Sequence[BaseTool], names: set[str]) -> list[BaseTool]:
     """Filter tools by name set."""
     return [tool for tool in all_tools if tool.name in names]
 
 
 def _build_domain_subgraph(
-    all_tools: list[BaseTool],
+    all_tools: Sequence[BaseTool],
     tool_names: set[str],
     prompt: str,
     checkpointer: MemorySaver,
@@ -80,7 +80,7 @@ def _build_domain_subgraph(
         Compiled LangGraph agent for the domain.
     """
     tools = _filter_tools(all_tools, tool_names)
-    agent = create_react_agent(
+    agent = create_react_agent(  # ty: ignore[deprecated]
         model=_get_llm(),
         tools=tools,
         checkpointer=checkpointer,
@@ -90,7 +90,9 @@ def _build_domain_subgraph(
     return agent
 
 
-def build_browse_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) -> Any:
+def build_browse_subgraph(
+    all_tools: Sequence[BaseTool], checkpointer: MemorySaver
+) -> Any:
     """Build the browse domain subgraph.
 
     Handles product search, viewing details, and reading reviews.
@@ -102,7 +104,9 @@ def build_browse_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) 
     )
 
 
-def build_cart_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) -> Any:
+def build_cart_subgraph(
+    all_tools: Sequence[BaseTool], checkpointer: MemorySaver
+) -> Any:
     """Build the cart domain subgraph.
 
     Handles shopping cart operations and product search.
@@ -114,7 +118,9 @@ def build_cart_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) ->
     )
 
 
-def build_order_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) -> Any:
+def build_order_subgraph(
+    all_tools: Sequence[BaseTool], checkpointer: MemorySaver
+) -> Any:
     """Build the order domain subgraph.
 
     Handles order management and history.
@@ -126,7 +132,9 @@ def build_order_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) -
     )
 
 
-def build_review_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) -> Any:
+def build_review_subgraph(
+    all_tools: Sequence[BaseTool], checkpointer: MemorySaver
+) -> Any:
     """Build the review domain subgraph.
 
     Handles review creation and management.
@@ -138,7 +146,9 @@ def build_review_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) 
     )
 
 
-def build_account_subgraph(all_tools: list[BaseTool], checkpointer: MemorySaver) -> Any:
+def build_account_subgraph(
+    all_tools: Sequence[BaseTool], checkpointer: MemorySaver
+) -> Any:
     """Build the account domain subgraph.
 
     Handles profile and address management.
@@ -160,8 +170,8 @@ def build_chitchat_node() -> Callable:
     """
     settings = get_settings()
     llm = ChatOpenAI(
-        model=settings.OPENAI_MODEL,
-        api_key=settings.OPENAI_API_KEY,
+        model=settings.OPENAI_MODEL,  # ty: ignore[unknown-argument]
+        api_key=settings.OPENAI_API_KEY,  # ty: ignore[unknown-argument]
     )
 
     def chitchat_node(state: dict) -> dict:

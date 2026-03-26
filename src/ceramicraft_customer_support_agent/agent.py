@@ -3,6 +3,8 @@
 import logging
 from typing import Any
 
+from collections.abc import Sequence
+
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -19,7 +21,7 @@ def get_memory() -> MemorySaver:
     return _memory
 
 
-def build_agent(tools: list[BaseTool]) -> Any:
+def build_agent(tools: Sequence[BaseTool]) -> Any:
     """Build a customer support agent with the given tools.
 
     This function provides backward compatibility with the old agent interface

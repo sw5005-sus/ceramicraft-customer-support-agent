@@ -63,8 +63,8 @@ def build_classifier() -> Callable:
     settings = get_settings()
 
     llm = ChatOpenAI(
-        model=settings.OPENAI_MODEL,
-        api_key=settings.OPENAI_API_KEY,
+        model=settings.OPENAI_MODEL,  # ty: ignore[unknown-argument]
+        api_key=settings.OPENAI_API_KEY,  # ty: ignore[unknown-argument]
     ).with_structured_output(IntentClassification)
 
     def classifier_node(state: dict) -> dict:
@@ -86,7 +86,9 @@ def build_classifier() -> Callable:
         try:
             # Format the prompt with the user message
             prompt_content = CLASSIFIER_PROMPT.format(message=user_message)
-            result = llm.invoke([HumanMessage(content=prompt_content)])
+            result: IntentClassification = llm.invoke(  # ty: ignore[invalid-assignment]
+                [HumanMessage(content=prompt_content)]
+            )
 
             logger.info(
                 "Classified intent: %s (confidence: %.2f) - %s",

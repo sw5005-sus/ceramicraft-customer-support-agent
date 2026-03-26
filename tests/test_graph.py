@@ -105,7 +105,7 @@ def test_route_by_intent_with_valid_intent():
     """route_by_intent should return the intent value."""
     state = {"intent": "browse", "messages": []}
 
-    result = route_by_intent(state)
+    result = route_by_intent(state)  # ty: ignore[invalid-argument-type]
 
     assert result == "browse"
 
@@ -114,7 +114,7 @@ def test_route_by_intent_with_missing_intent():
     """route_by_intent should default to chitchat if no intent."""
     state = {"messages": []}
 
-    result = route_by_intent(state)
+    result = route_by_intent(state)  # ty: ignore[invalid-argument-type]
 
     assert result == "chitchat"
 
@@ -125,7 +125,7 @@ def test_route_by_intent_with_all_intents():
 
     for intent in intents:
         state = {"intent": intent, "messages": []}
-        result = route_by_intent(state)
+        result = route_by_intent(state)  # ty: ignore[invalid-argument-type]
         assert result == intent
 
 
@@ -185,6 +185,6 @@ def test_route_by_intent_logs_routing(mock_logger):
     """route_by_intent should log the routing decision."""
     state = {"intent": "cart", "messages": []}
 
-    route_by_intent(state)
+    route_by_intent(state)  # ty: ignore[invalid-argument-type]
 
     mock_logger.info.assert_called_once_with("Routing to %s based on intent", "cart")
