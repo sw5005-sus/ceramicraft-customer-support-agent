@@ -47,6 +47,7 @@ name = "ceramicraft-customer-support-agent"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "dttb" },
     { name = "httpx" },
     { name = "langchain" },
     { name = "langchain-mcp-adapters" },
@@ -69,6 +70,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "dttb", specifier = ">=0.3.2" },
     { name = "httpx", specifier = ">=0.28.0" },
     { name = "langchain", specifier = ">=0.3.0" },
     { name = "langchain-mcp-adapters", specifier = ">=0.2.2" },
@@ -393,6 +395,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed", size = 60722, upload-time = "2023-12-24T09:54:32.31Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2", size = 20277, upload-time = "2023-12-24T09:54:30.421Z" },
+]
+
+[[package]]
+name = "dttb"
+version = "0.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/18/19/7ba501cb4100dd914dca272c90f59c205989b024d270bd0bcb0359c73fec/dttb-0.3.2.tar.gz", hash = "sha256:d6fb9681f47044981ce71cec9a4922bdc86099a68cf98321dbd6c923805b67eb", size = 4476, upload-time = "2026-01-29T04:58:49.493Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/89/03/c6471a42a70d8eacdd1ad58946e5d329c425144861174154f18874257199/dttb-0.3.2-py3-none-any.whl", hash = "sha256:7a240b6d70fc080eb1803c737b12836e6a333ea183e5d0d41afee6dd5dfb40b9", size = 5415, upload-time = "2026-01-29T04:58:48.123Z" },
 ]
 
 [[package]]

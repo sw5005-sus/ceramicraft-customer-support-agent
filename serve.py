@@ -2,7 +2,12 @@
 
 import logging
 
+import dttb
+
 from ceramicraft_customer_support_agent.mcp_server import create_mcp_server
+
+# Apply dttb tracebacks for timestamps on exceptions
+dttb.apply()
 
 logging.basicConfig(
     level=logging.INFO,
