@@ -1,0 +1,13 @@
+services:
+  customer-support-agent:
+    build: .
+    container_name: customer-support-agent-container
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: "bridge"
