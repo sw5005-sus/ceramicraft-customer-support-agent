@@ -47,7 +47,7 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server-svc:8080/mcp` |
-| `LLM_MODEL` | LLM model name | *(required)* |
-| `LLM_API_KEY` | LLM provider API key | *(required)* |
+| `OPENAI_API_KEY` | OpenAI API key | *(required)* |
+| `OPENAI_MODEL` | OpenAI model name | `gpt-4o` |
 | `LANGSMITH_API_KEY` | LangSmith tracing key | *(optional)* |
 | `LANGSMITH_PROJECT` | LangSmith project name | `ceramicraft-cs-agent` |

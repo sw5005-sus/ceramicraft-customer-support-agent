@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     # MCP Server
     MCP_SERVER_URL: str = "http://mcp-server-svc:8080/mcp"
 
-    # LLM
-    LLM_MODEL: str = ""
-    LLM_API_KEY: str = ""
+    # LLM (OpenAI)
+    OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o"
 
     # LangSmith (optional)
     LANGSMITH_API_KEY: str = ""
