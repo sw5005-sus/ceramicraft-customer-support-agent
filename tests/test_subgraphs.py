@@ -46,7 +46,7 @@ def test_build_browse_subgraph(mock_create_react, mock_llm_cls):
 
     # Check other arguments
     assert call_args.kwargs["checkpointer"] is mock_memory
-    assert "state_modifier" in call_args.kwargs
+    assert "prompt" in call_args.kwargs
 
     mock_llm_cls.assert_called_once()
     assert result is mock_agent
@@ -318,7 +318,7 @@ def test_all_subgraphs_use_correct_prompts(mock_create_react, mock_llm_cls):
         subgraph_builder(mock_tools, mock_memory)
 
         call_args = mock_create_react.call_args
-        assert "state_modifier" in call_args.kwargs
+        assert "prompt" in call_args.kwargs
         # Each should have a different prompt
-        assert isinstance(call_args.kwargs["state_modifier"], str)
-        assert len(call_args.kwargs["state_modifier"]) > 0
+        assert isinstance(call_args.kwargs["prompt"], str)
+        assert len(call_args.kwargs["prompt"]) > 0
