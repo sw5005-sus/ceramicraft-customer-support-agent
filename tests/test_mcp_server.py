@@ -149,9 +149,7 @@ async def test_reset_conversation_default_thread():
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
 @patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
 @patch("ceramicraft_customer_support_agent.mcp_server.streamablehttp_client")
-async def test_lifespan_initializes_agent(
-    mock_http_client, mock_discover, mock_build
-):
+async def test_lifespan_initializes_agent(mock_http_client, mock_discover, mock_build):
     """Lifespan should connect to MCP server and build agent."""
     mock_session = AsyncMock()
     mock_session.initialize = AsyncMock()

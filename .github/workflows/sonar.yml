@@ -27,7 +27,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          uv run pytest --cov=src/ceramicraft_mcp_server --cov-report=xml --cov-config=pyproject.toml
+          uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=xml --cov-config=pyproject.toml
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@1a6d90ebcb0e6a6b1d87e37ba693fe453195ae25
