@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from ceramicraft_customer_support_agent.agent import build_agent
+from ceramicraft_customer_support_agent.agent import build_agent, get_memory
 
 
 @patch("ceramicraft_customer_support_agent.agent.ChatOpenAI")
@@ -18,7 +18,6 @@ def test_build_agent_calls_create_agent(mock_create, mock_llm_cls):
     mock_create.assert_called_once()
     assert agent is mock_create.return_value
 
-    # Verify tools were passed
     call_kwargs = mock_create.call_args
     assert call_kwargs.kwargs["tools"] == [mock_tool]
 
@@ -59,3 +58,20 @@ def test_build_agent_passes_system_prompt(mock_create, mock_llm_cls):
     call_kwargs = mock_create.call_args
     assert "system_prompt" in call_kwargs.kwargs
     assert "CeramiCraft" in call_kwargs.kwargs["system_prompt"]
+
+
+@patch("ceramicraft_customer_support_agent.agent.ChatOpenAI")
+@patch("ceramicraft_customer_support_agent.agent.create_agent")
+def test_build_agent_uses_shared_memory(mock_create, mock_llm_cls):
+    """build_agent should use the shared MemorySaver."""
+    mock_create.return_value = MagicMock()
+
+    build_agent([])
+
+    call_kwargs = mock_create.call_args
+    assert call_kwargs.kwargs["checkpointer"] is get_memory()
+
+
+def test_get_memory_returns_same_instance():
+    """get_memory should always return the same MemorySaver."""
+    assert get_memory() is get_memory()

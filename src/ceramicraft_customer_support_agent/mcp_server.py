@@ -1,46 +1,43 @@
 """MCP Server — exposes the Customer Support Agent as MCP tools."""
 
 import logging
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from typing import Any
 
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
 from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.fastmcp.exceptions import ToolError
 
 from ceramicraft_customer_support_agent.agent import build_agent
 from ceramicraft_customer_support_agent.config import get_settings
-from ceramicraft_customer_support_agent.mcp_client import discover_tools
+from ceramicraft_customer_support_agent.mcp_client import discover_tools, mcp_session
 
 logger = logging.getLogger(__name__)
 
-# Module-level agent reference, populated during lifespan startup
-_agent: Any = None
 
+def _extract_bearer_token(ctx: Context) -> str | None:
+    """Extract Bearer token from the incoming MCP request context.
 
-@asynccontextmanager
-async def _lifespan(server: FastMCP) -> AsyncIterator[None]:
-    """Manage MCP client session and agent lifecycle."""
-    global _agent
-    settings = get_settings()
+    Mirrors the approach used by ceramicraft-mcp-server.
+    """
+    # FastMCP may expose transport headers on the context
+    headers = getattr(ctx, "headers", None)
+    if headers:
+        auth_header = headers.get("authorization", "")
+        if auth_header.startswith("Bearer "):
+            return auth_header[7:]
 
-    logger.info("Connecting to MCP Server at %s", settings.MCP_SERVER_URL)
+    # Fallback: meta/extra
+    meta = getattr(ctx, "meta", None)
+    if meta:
+        extra = getattr(meta, "extra", None)
+        if isinstance(extra, dict):
+            token = extra.get("token") or extra.get("authorization", "")
+            if isinstance(token, str):
+                if token.startswith("Bearer "):
+                    return token[7:]
+                if token:
+                    return token
 
-    async with streamablehttp_client(settings.MCP_SERVER_URL) as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            logger.info("MCP Client session initialized")
-
-            tools = await discover_tools(session)
-            logger.info("Discovered %d tools", len(tools))
-
-            _agent = build_agent(tools)
-            logger.info("Agent ready")
-
-            yield
-
-    _agent = None
+    return None
 
 
 def create_mcp_server() -> FastMCP:
@@ -50,7 +47,6 @@ def create_mcp_server() -> FastMCP:
         "CeramiCraft Customer Support",
         host=settings.AGENT_HOST,
         port=settings.AGENT_PORT,
-        lifespan=_lifespan,
     )
 
     @mcp.tool()
@@ -72,13 +68,22 @@ def create_mcp_server() -> FastMCP:
         Returns:
             Agent response with the assistant's reply.
         """
-        if _agent is None:
-            return {"error": "Agent not initialized"}
+        token = _extract_bearer_token(ctx)
 
-        response = await _agent.ainvoke(
-            {"messages": [{"role": "user", "content": message}]},
-            config={"configurable": {"thread_id": thread_id}},
-        )
+        try:
+            async with mcp_session(token=token) as session:
+                tools = await discover_tools(session)
+                agent = build_agent(tools)
+
+                response = await agent.ainvoke(
+                    {"messages": [{"role": "user", "content": message}]},
+                    config={"configurable": {"thread_id": thread_id}},
+                )
+        except Exception:
+            logger.exception("Agent invocation failed")
+            raise ToolError(
+                "Sorry, something went wrong processing your request. Please try again."
+            )
 
         # Extract the last assistant message
         messages = response.get("messages", [])
