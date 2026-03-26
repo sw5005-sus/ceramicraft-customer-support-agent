@@ -1,6 +1,6 @@
 # Customer Support Agent — 开发计划
 
-_最后更新：2026-03-26_
+_最后更新：2026-03-27_
 
 ---
 
@@ -11,8 +11,8 @@ _最后更新：2026-03-26_
 | 对外接口 | MCP Server（Streamable HTTP），其他 agent 通过 MCP 编排 |
 | 对话状态 | 先 MemorySaver（内存），上线前切 PostgreSQL |
 | 鉴权 | Agent 不验证 token，纯透传给下游 MCP Server（由 MCP Server 统一验证） |
-| 敏感操作 | 支付、充值、下单暂不实现 |
-| Agent 架构 | 单 ReAct agent + tools（LangGraph），按需拆子图 |
+| 敏感操作 | 支付、充值暂不实现；下单和确认收货需 Guard 确认 |
+| Agent 架构 | LangGraph StateGraph：意图分类 → 条件路由 → 领域子图（ReAct）→ 安全守卫 |
 | LLM | OpenAI GPT-4o |
 | 设计原则 | Prompt Engineering + Context Engineering + 渐进式披露 |
 
@@ -20,34 +20,45 @@ _最后更新：2026-03-26_
 
 ## 架构设计
 
-### ReAct Agent 状态机
+### StateGraph 流水线
 
 ```
-        ┌──────────────┐
-        │   LLM Node   │ ◀─── System Prompt + 对话历史 + Tool 结果
-        └──────┬───────┘
-               │
-        需要调 tool?
-        ┌──────┴──────┐
-        │ Yes         │ No
-        ▼             ▼
-  ┌───────────┐   ┌──────────┐
-  │ Tool Node │   │ 返回回复  │
-  └─────┬─────┘   └──────────┘
-        │
-        │ tool 结果
-        └──▶ 回到 LLM Node
+  ┌──────────┐
+  │ __start__ │
+  └─────┬────┘
+        ▼
+  ┌────────────┐
+  │ Classifier │ ← 意图分类（Pydantic structured output，无工具）
+  └─────┬──────┘
+        │ conditional edges
+        ├──→ Browse Subgraph   (search_products, get_product, list_product_reviews)
+        ├──→ Cart Subgraph     (get_cart, add/update/remove_cart_item, estimate_cart_price, search_products)
+        ├──→ Order Subgraph    (list_my_orders, get_order_detail, confirm_receipt, get_order_stats, create_order)
+        ├──→ Review Subgraph   (create_review, like_review, get_user_reviews, list_product_reviews)
+        ├──→ Account Subgraph  (get/update_my_profile, addresses CRUD)
+        ├──→ Chitchat Node     (纯 LLM，无工具)
+        └──→ Escalate Node     (固定转人工消息)
+                │
+                ▼
+          ┌─────────┐
+          │  Guard  │ ← auth 检查 + 敏感操作确认
+          └─────────┘
+                │
+                ▼
+          ┌──────────┐
+          │ __end__  │
+          └──────────┘
 ```
 
-LangGraph `create_react_agent` 实现 Reason → Act → Observe 循环。LLM 自主决定调哪个 tool、调几次、何时回复用户。
+每个领域子图是独立的 `create_react_agent`，只绑定本领域相关工具，减少 token 消耗和幻觉。
 
 ### 工具发现
 
-Tools 从 ceramicraft-mcp-server **动态发现**（启动时拉取 `list_tools`），转换为 LangChain Tool 格式注入 agent。MCP Server 新增 tool 时 agent 无需改代码。
+Tools 从 ceramicraft-mcp-server **动态发现**（首次请求时拉取 `list_tools`，结果缓存），转换为 LangChain Tool 格式注入 agent。MCP Server 新增 tool 时 agent 无需改代码。
 
 ### 对话隔离
 
-通过 `thread_id` 隔离多用户对话。每个用户独立的对话历史和上下文，`thread_id` 来源于用户标识。
+通过 `thread_id` 隔离多用户对话。每个用户独立的对话历史和上下文，`thread_id` 来源于用户标识。共享的 `MemorySaver` 在进程内跨请求持久化。
 
 ### Token 透传链路
 
@@ -74,20 +85,19 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 ### 1.2 MCP Client（调下游）
 - 连接 ceramicraft-mcp-server（Streamable HTTP）
 - Token 透传：调用时带上从 ctx 提取的 Bearer token
-- 工具发现：启动时从 MCP Server 拉取可用 tools 列表
+- 工具发现：首次请求时从 MCP Server 拉取可用 tools 列表（结果缓存）
 
 ### 1.3 LangGraph Agent
-- 单 ReAct agent（`create_react_agent`）
-- 绑定从 MCP Server 发现的 tools
-- MemorySaver 管理对话状态
-- System prompt：
-  - 角色定义（CeramiCraft 客服）
-  - 能力边界（渐进式披露：先介绍能做什么，用户追问再展开）
-  - 安全约束（不泄露系统信息、不执行敏感操作）
+- StateGraph：Classifier → Router → Domain Subgraphs → Guard
+- 7 种意图分类：browse / cart / order / review / account / chitchat / escalate
+- 5 个领域子图（ReAct agent），各自绑定领域工具
+- 2 个轻量节点：chitchat（纯 LLM）、escalate（固定消息）
+- Guard 节点：auth 检查 + 敏感操作确认
+- MemorySaver 管理对话状态（模块级共享，跨请求持久）
 
 ### 1.4 MCP Server（对外暴露）
 - 暴露 `chat` tool：接收用户消息，返回 agent 回复
-- 暴露 `reset` tool：重置对话历史
+- 暴露 `reset` tool：重置对话历史（API 兼容，待持久化后实现）
 - 通过 FastMCP + Streamable HTTP 提供服务
 
 ### 1.5 Health + Serve
@@ -100,8 +110,8 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 
 ## Phase 2 — 功能模块 ✅
 
-> Per-request MCP session with token forwarding, enhanced prompts, error handling.
-> 34 tests, 100% coverage.
+> Intent-routed StateGraph, per-request MCP session with token forwarding, domain-specific prompts, guard node.
+> 96 tests, 97% coverage.
 
 ### 2.1 商品咨询（PUBLIC，无需 token）
 - search_products：搜索商品
@@ -114,10 +124,10 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 - estimate_cart_price
 - Agent 能力：引导加购、确认操作、展示价格
 
-### 2.3 订单查询（USER，只读）
-- list_my_orders, get_order_detail
-- ~~create_order, confirm_receipt~~ → 暂不实现
-- Agent 能力：查询订单状态、解释物流信息
+### 2.3 订单管理（USER）
+- list_my_orders, get_order_detail, get_order_stats
+- create_order, confirm_receipt（Guard 节点要求确认）
+- Agent 能力：查询订单状态、解释物流信息、引导下单
 
 ### 2.4 评价互动（USER）
 - create_review, get_user_reviews, like_review
@@ -125,11 +135,11 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 
 ### 2.5 账户管理（USER）
 - get_my_profile, update_my_profile
-- list/create/update/delete_address
+- list/create/update/delete_address（delete 需 Guard 确认）
 - Agent 能力：查看和修改个人信息、地址管理
 
 ### ~~2.6 支付~~ → 暂不实现
-### ~~2.7 下单~~ → 暂不实现
+### ~~2.7 充值~~ → 暂不实现
 
 ---
 
@@ -141,7 +151,7 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 - Few-shot examples 提升工具调用准确率
 
 ### 3.2 测试
-- 单元测试：auth、config、tool 注册
+- 单元测试：auth、config、tool 注册、intent classification、guard、subgraphs
 - 集成测试：mock MCP Server，验证 agent 调用链路
 - 对话测试：典型场景覆盖
 
@@ -156,19 +166,35 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 
 ---
 
-## 项目结构（目标）
+## 项目结构
 
 ```
 ceramicraft-customer-support-agent/
 ├── serve.py                          # 入口
 ├── src/ceramicraft_customer_support_agent/
 │   ├── __init__.py
-│   ├── config.py                     # 配置
-│   ├── agent.py                      # LangGraph ReAct agent 定义
+│   ├── config.py                     # 配置（pydantic-settings）
+│   ├── agent.py                      # 向后兼容接口（调 build_graph）
+│   ├── classifier.py                 # 意图分类节点（Intent enum + Pydantic structured output）
+│   ├── graph.py                      # StateGraph 主图（AgentState + build_graph + _wrap_subgraph）
+│   ├── guard.py                      # 安全守卫节点（auth 检查 + 敏感操作确认）
+│   ├── nodes.py                      # 轻量节点（chitchat + escalate，无工具）
+│   ├── subgraphs.py                  # 领域子图（5 个 ReAct agent builder）
 │   ├── mcp_client.py                 # MCP Client（连接 ceramicraft-mcp-server）
-│   ├── mcp_server.py                 # MCP Server（对外暴露 chat 等 tool）
-│   └── prompts.py                    # System prompt 模板
+│   ├── mcp_server.py                 # MCP Server（对外暴露 chat / reset）
+│   └── prompts.py                    # System prompt 模板（主 + 6 个领域）
 ├── tests/
+│   ├── conftest.py
+│   ├── test_agent.py
+│   ├── test_classifier.py
+│   ├── test_config.py
+│   ├── test_graph.py
+│   ├── test_guard.py
+│   ├── test_mcp_client.py
+│   ├── test_mcp_server.py
+│   ├── test_nodes.py
+│   ├── test_prompts.py
+│   └── test_subgraphs.py
 ├── Dockerfile
 ├── docker-compose.yml
 └── pyproject.toml
@@ -178,9 +204,7 @@ ceramicraft-customer-support-agent/
 
 ## 暂不实现（Backlog）
 
-- [ ] create_order（下单）— 需人工确认机制
-- [ ] confirm_receipt（确认收货）— 需人工确认机制
 - [ ] top_up_account / get_pay_account（支付）— 需安全措施
 - [ ] register_push_token（通知）— 优先级低
 - [ ] PostgreSQL checkpoint 持久化
-- [ ] 子图拆分（按意图路由）
+- [x] ~~子图拆分（按意图路由）~~ — 已完成
