@@ -87,7 +87,7 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 
 ### 1.4 MCP Server（对外暴露）
 - 暴露 `chat` tool：接收用户消息，返回 agent 回复
-- 暴露 `reset_conversation` tool：重置对话历史
+- 暴露 `reset` tool：重置对话历史
 - 通过 FastMCP + Streamable HTTP 提供服务
 
 ### 1.5 Health + Serve

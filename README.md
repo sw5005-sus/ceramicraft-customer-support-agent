@@ -41,7 +41,7 @@ history is preserved across requests via a shared `MemorySaver`.
 | Tool | Description |
 |------|-------------|
 | `chat` | Send a message to the customer support agent |
-| `reset_conversation` | Reset conversation history for a thread |
+| `reset` | Reset conversation history for a thread |
 
 ## Development
 

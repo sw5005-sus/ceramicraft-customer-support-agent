@@ -101,7 +101,7 @@ def create_mcp_server() -> FastMCP:
         return {"reply": "I'm sorry, I couldn't process your request."}
 
     @mcp.tool()
-    async def reset_conversation(
+    async def reset(
         thread_id: str = "default",
     ) -> dict[str, Any]:
         """Reset the conversation history for a given thread.

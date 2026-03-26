@@ -16,11 +16,11 @@ def test_create_mcp_server_returns_fastmcp():
 
 
 def test_create_mcp_server_registers_tools():
-    """create_mcp_server should register chat and reset_conversation tools."""
+    """create_mcp_server should register chat and reset tools."""
     mcp = mcp_server.create_mcp_server()
     tools = mcp._tool_manager._tools
     assert "chat" in tools
-    assert "reset_conversation" in tools
+    assert "reset" in tools
 
 
 # --- _extract_bearer_token tests ---
@@ -210,23 +210,23 @@ async def test_chat_raises_tool_error_on_exception(mock_session):
         await chat_fn(ctx=ctx, message="hi", thread_id="t1")
 
 
-# --- reset_conversation tool tests ---
+# --- reset tool tests ---
 
 
-async def test_reset_conversation_returns_ok():
-    """reset_conversation should return ok status with thread info."""
+async def test_reset_returns_ok():
+    """reset should return ok status with thread info."""
     mcp = mcp_server.create_mcp_server()
-    reset_fn = mcp._tool_manager._tools["reset_conversation"].fn
+    reset_fn = mcp._tool_manager._tools["reset"].fn
 
     result = await reset_fn(thread_id="my-thread")
     assert result["status"] == "ok"
     assert "my-thread" in result["message"]
 
 
-async def test_reset_conversation_default_thread():
-    """reset_conversation should work with default thread_id."""
+async def test_reset_default_thread():
+    """reset should work with default thread_id."""
     mcp = mcp_server.create_mcp_server()
-    reset_fn = mcp._tool_manager._tools["reset_conversation"].fn
+    reset_fn = mcp._tool_manager._tools["reset"].fn
 
     result = await reset_fn(thread_id="default")
     assert result["status"] == "ok"
