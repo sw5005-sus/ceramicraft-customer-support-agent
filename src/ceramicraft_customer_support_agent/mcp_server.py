@@ -121,6 +121,12 @@ def create_mcp_server() -> FastMCP:
     ) -> dict[str, Any]:
         """Reset the conversation history for a given thread.
 
+        Note: Each chat invocation currently builds a fresh agent with its
+        own MemorySaver. Cross-request memory is not yet persisted, so this
+        is effectively a no-op. Kept for API compatibility; will gain real
+        functionality when a persistent checkpointer (e.g. Redis/Postgres)
+        replaces in-memory storage.
+
         Args:
             thread_id: Conversation thread identifier to reset.
 

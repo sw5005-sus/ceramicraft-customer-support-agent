@@ -12,12 +12,14 @@ from typing_extensions import Annotated
 
 from ceramicraft_customer_support_agent.classifier import build_classifier
 from ceramicraft_customer_support_agent.guard import build_guard
+from ceramicraft_customer_support_agent.nodes import (
+    build_chitchat_node,
+    build_escalate_node,
+)
 from ceramicraft_customer_support_agent.subgraphs import (
     build_account_subgraph,
     build_browse_subgraph,
     build_cart_subgraph,
-    build_chitchat_node,
-    build_escalate_node,
     build_order_subgraph,
     build_review_subgraph,
 )
@@ -68,11 +70,11 @@ def build_graph(tools: Sequence[BaseTool]) -> Any:
 
     # Add nodes to graph
     graph.add_node("classifier", classifier)
-    graph.add_node("browse", _wrap_subgraph(browse_agent))
-    graph.add_node("cart", _wrap_subgraph(cart_agent))
-    graph.add_node("order", _wrap_subgraph(order_agent))
-    graph.add_node("review", _wrap_subgraph(review_agent))
-    graph.add_node("account", _wrap_subgraph(account_agent))
+    graph.add_node("browse", _wrap_subgraph(browse_agent, "browse"))
+    graph.add_node("cart", _wrap_subgraph(cart_agent, "cart"))
+    graph.add_node("order", _wrap_subgraph(order_agent, "order"))
+    graph.add_node("review", _wrap_subgraph(review_agent, "review"))
+    graph.add_node("account", _wrap_subgraph(account_agent, "account"))
     graph.add_node("chitchat", chitchat_node)
     graph.add_node("escalate", escalate_node)
     graph.add_node("guard", guard)
@@ -136,11 +138,12 @@ def route_by_intent(state: AgentState) -> str:
     return intent
 
 
-def _wrap_subgraph(subgraph: Any) -> Callable:
+def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
     """Wrap a subgraph agent to work with the main graph state.
 
     Args:
         subgraph: A compiled LangGraph agent from create_react_agent.
+        domain: Domain name used to isolate checkpointer thread.
 
     Returns:
         An async callable that extracts messages, invokes the subgraph,
@@ -154,7 +157,7 @@ def _wrap_subgraph(subgraph: Any) -> Callable:
 
             result = await subgraph.ainvoke(
                 {"messages": messages},
-                config={"configurable": {"thread_id": "subgraph"}},
+                config={"configurable": {"thread_id": f"subgraph-{domain}"}},
             )
 
             return {"messages": result.get("messages", [])}

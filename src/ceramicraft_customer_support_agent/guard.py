@@ -1,7 +1,7 @@
 """Safety guard node for post-processing responses."""
 
-from collections.abc import Callable
 import logging
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 

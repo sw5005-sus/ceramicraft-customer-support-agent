@@ -1,7 +1,7 @@
 """Intent classification node for routing user queries."""
 
-from collections.abc import Callable
 import logging
+from collections.abc import Callable
 from enum import Enum
 
 from langchain_core.messages import HumanMessage

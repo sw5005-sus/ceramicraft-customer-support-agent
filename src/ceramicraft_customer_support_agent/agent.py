@@ -1,9 +1,8 @@
 """LangGraph Customer Support Agent - backward compatibility interface."""
 
 import logging
-from typing import Any
-
 from collections.abc import Sequence
+from typing import Any
 
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
