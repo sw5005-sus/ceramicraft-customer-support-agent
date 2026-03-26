@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ceramicraft-customer-support-agent"
 version = "0.1.0"
-description = "Customer Support AI Agent for CeramiCraft — powered by LangGraph + MCP."
+description = "Customer Support AI Agent for CeramiCraft."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
