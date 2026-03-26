@@ -49,6 +49,13 @@ def create_mcp_server() -> FastMCP:
         port=settings.AGENT_PORT,
     )
 
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health_check(request):  # noqa: ARG001
+        """Liveness/readiness probe endpoint."""
+        from starlette.responses import JSONResponse
+
+        return JSONResponse({"status": "ok"})
+
     @mcp.tool()
     async def chat(
         ctx: Context,

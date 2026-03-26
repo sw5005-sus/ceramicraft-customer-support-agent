@@ -231,3 +231,13 @@ async def test_reset_conversation_default_thread():
     result = await reset_fn(thread_id="default")
     assert result["status"] == "ok"
     assert "default" in result["message"]
+
+
+# --- health endpoint tests ---
+
+
+def test_create_mcp_server_has_health_route():
+    """create_mcp_server should register a /health custom route."""
+    mcp = mcp_server.create_mcp_server()
+    route_paths = [r.path for r in mcp._custom_starlette_routes]
+    assert "/health" in route_paths

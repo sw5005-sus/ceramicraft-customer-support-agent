@@ -63,7 +63,7 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 
 ---
 
-## Phase 1 — 核心骨架
+## Phase 1 — 核心骨架 ✅
 
 **目标：跑通 MCP Server + MCP Client + LangGraph agent 的完整链路**
 
@@ -98,7 +98,10 @@ Agent 不做 JWT 验证，只从 MCP Context 提取 Bearer token 并透传给下
 
 ---
 
-## Phase 2 — 功能模块（渐进实现）
+## Phase 2 — 功能模块 ✅
+
+> Per-request MCP session with token forwarding, enhanced prompts, error handling.
+> 34 tests, 100% coverage.
 
 ### 2.1 商品咨询（PUBLIC，无需 token）
 - search_products：搜索商品

@@ -7,25 +7,24 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 ## Architecture
 
 ```
-                       ┌─────────────────────────────────┐
-                       │   Customer Support Agent         │
-  User / Orchestrator  │                                  │
-  ───MCP (chat)──────▶ │  FastMCP Server  ──▶  LangGraph  │
-                       │                       ReAct Agent│
-                       │                          │       │
-                       │                     MCP Client    │
-                       └──────────────────────│───────────┘
-                                              │
-                                         MCP (tools)
-                                              │
-                                              ▼
-                                    CeramiCraft MCP Server
-                                              │
-                                         HTTP (internal)
-                                              │
-                                              ▼
-                                      Backend Microservices
+                       ┌──────────────────────────────────┐
+                       │   Customer Support Agent          │
+  User / Orchestrator  │                                   │
+  ───MCP (chat)──────▶ │  FastMCP Server                   │
+                       │    │                              │
+                       │    ├─ extract Bearer token        │
+                       │    ├─ MCP Client (per-request)    │
+                       │    │   └─ forward token ──────────┼──▶ CeramiCraft MCP Server
+                       │    ├─ discover tools              │         │
+                       │    ├─ build ReAct agent            │    HTTP (internal)
+                       │    └─ invoke (shared memory)       │         │
+                       │                                   │         ▼
+                       └──────────────────────────────────┘   Backend Services
 ```
+
+Each `chat` call creates a fresh MCP session with the user's auth token,
+discovers available tools, and invokes the LangGraph agent. Conversation
+history is preserved across requests via a shared `MemorySaver`.
 
 ## Available Tools (via MCP)
 
