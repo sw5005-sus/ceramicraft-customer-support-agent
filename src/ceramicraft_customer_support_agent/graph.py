@@ -26,6 +26,9 @@ from ceramicraft_customer_support_agent.subgraphs import (
 
 logger = logging.getLogger(__name__)
 
+# Module-level shared checkpointer — persists across requests
+_checkpointer = MemorySaver()
+
 
 class AgentState(TypedDict):
     """State for the customer support agent graph."""
@@ -49,8 +52,9 @@ def build_graph(tools: Sequence[BaseTool]) -> Any:
     Returns:
         A compiled LangGraph agent ready to invoke.
     """
-    # Shared checkpointer for conversation continuity
-    memory = MemorySaver()
+    # Use module-level shared checkpointer so conversation history
+    # survives across requests with the same thread_id.
+    memory = _checkpointer
 
     # Create the main graph
     graph = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]

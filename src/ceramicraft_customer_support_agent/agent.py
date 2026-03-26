@@ -5,19 +5,10 @@ from collections.abc import Sequence
 from typing import Any
 
 from langchain_core.tools import BaseTool
-from langgraph.checkpoint.memory import MemorySaver
 
 from ceramicraft_customer_support_agent.graph import build_graph
 
 logger = logging.getLogger(__name__)
-
-# Shared checkpointer — persists conversation state across requests
-_memory = MemorySaver()
-
-
-def get_memory() -> MemorySaver:
-    """Return the shared MemorySaver instance."""
-    return _memory
 
 
 def build_agent(tools: Sequence[BaseTool]) -> Any:

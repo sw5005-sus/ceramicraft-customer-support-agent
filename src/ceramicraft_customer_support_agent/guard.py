@@ -1,6 +1,7 @@
 """Safety guard node for post-processing responses."""
 
 import logging
+import re
 from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
@@ -59,12 +60,13 @@ def build_guard() -> Callable:
         for msg in recent_messages:
             msg_content = str(msg.content) if hasattr(msg, "content") else str(msg)
 
-            # Check for auth-related errors in responses
-            if (
-                "auth" in msg_content.lower()
-                or "login" in msg_content.lower()
-                or "unauthorized" in msg_content.lower()
-            ):
+            # Check for auth-related errors in responses (word boundaries
+            # to avoid false positives like "author", "authority")
+            _auth_pattern = re.compile(
+                r"\b(auth(?:entication|orization)?|login|log[\s-]?in|unauthorized|unauthenticated)\b",
+                re.IGNORECASE,
+            )
+            if _auth_pattern.search(msg_content):
                 if not auth_token:
                     needs_auth_prompt = True
 

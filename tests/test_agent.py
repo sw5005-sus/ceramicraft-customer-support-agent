@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock, patch
 
-from ceramicraft_customer_support_agent.agent import build_agent, get_memory
+from ceramicraft_customer_support_agent.agent import build_agent
 
 
 @patch("ceramicraft_customer_support_agent.agent.build_graph")
@@ -43,15 +43,6 @@ def test_build_agent_logs_tool_count(mock_logger, mock_build_graph):
     mock_logger.info.assert_called_once()
     log_call = mock_logger.info.call_args[0]
     assert "3 tools" in log_call[0] or "3" in str(log_call[1:])
-
-
-def test_get_memory_returns_same_instance():
-    """get_memory should always return the same MemorySaver."""
-    memory1 = get_memory()
-    memory2 = get_memory()
-
-    assert memory1 is memory2
-    assert hasattr(memory1, "put") or hasattr(memory1, "aget")  # MemorySaver methods
 
 
 @patch("ceramicraft_customer_support_agent.agent.build_graph")
@@ -97,12 +88,3 @@ def test_build_agent_handles_various_tool_types(mock_build_graph):
 
     assert result is mock_graph
     mock_build_graph.assert_called_once_with(tools)
-
-
-def test_get_memory_type():
-    """get_memory should return a MemorySaver instance."""
-    from langgraph.checkpoint.memory import MemorySaver
-
-    memory = get_memory()
-
-    assert isinstance(memory, MemorySaver)

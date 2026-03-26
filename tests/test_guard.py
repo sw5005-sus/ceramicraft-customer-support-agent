@@ -226,20 +226,51 @@ def test_guard_node_with_multiple_auth_keywords():
     """Guard should detect various auth-related keywords."""
     guard = build_guard()
 
-    auth_keywords = ["auth", "login", "unauthorized"]
+    auth_phrases = [
+        "authentication required",
+        "login required",
+        "unauthorized access",
+        "unauthenticated request",
+    ]
 
-    for keyword in auth_keywords:
+    for phrase in auth_phrases:
         state = {
             "auth_token": None,
             "messages": [
-                {"role": "assistant", "content": f"Error: {keyword} required"},
+                {"role": "assistant", "content": f"Error: {phrase}"},
             ],
         }
 
         result = guard(state)
 
-        assert "messages" in result
+        assert "messages" in result, f"Failed to detect: {phrase}"
         assert "log in" in result["messages"][0]["content"].lower()
+
+
+def test_guard_node_no_false_positive_on_author():
+    """Guard should NOT trigger on words like 'author' or 'authority'."""
+    guard = build_guard()
+
+    false_positive_phrases = [
+        "The author of this review is John",
+        "Local authority regulations apply",
+        "authored by the team",
+        "unauthorized" not in "authority",  # just a truthy filler
+    ]
+
+    for phrase in false_positive_phrases:
+        if isinstance(phrase, bool):
+            continue
+        state = {
+            "auth_token": None,
+            "messages": [
+                {"role": "assistant", "content": phrase},
+            ],
+        }
+
+        result = guard(state)
+
+        assert result == {}, f"False positive on: {phrase}"
 
 
 def test_guard_node_with_unknown_sensitive_operation():

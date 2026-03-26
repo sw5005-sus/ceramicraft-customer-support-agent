@@ -46,6 +46,14 @@ def test_chitchat_node_with_messages(mock_llm_cls):
 
     mock_llm_instance.invoke.assert_called_once()
 
+    # Verify role mapping: "human" → "user", not passed raw
+    call_args = mock_llm_instance.invoke.call_args[0][0]
+    user_msgs = [m for m in call_args if m["role"] == "user"]
+    assert len(user_msgs) == 1
+    assert user_msgs[0]["content"] == "Hi there!"
+    # Should NOT contain "human" as a role
+    assert all(m["role"] in ("system", "user", "assistant") for m in call_args)
+
 
 @patch("ceramicraft_customer_support_agent.nodes.ChatOpenAI")
 def test_chitchat_node_with_empty_messages(mock_llm_cls):

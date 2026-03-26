@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from ceramicraft_customer_support_agent.graph import (
     AgentState,
+    _checkpointer,
     build_graph,
     route_by_intent,
 )
@@ -188,3 +189,10 @@ def test_route_by_intent_logs_routing(mock_logger):
     route_by_intent(state)  # ty: ignore[invalid-argument-type]
 
     mock_logger.info.assert_called_once_with("Routing to %s based on intent", "cart")
+
+
+def test_checkpointer_is_shared():
+    """Module-level _checkpointer should be a single MemorySaver instance."""
+    from langgraph.checkpoint.memory import MemorySaver
+
+    assert isinstance(_checkpointer, MemorySaver)

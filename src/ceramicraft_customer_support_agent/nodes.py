@@ -36,10 +36,13 @@ def build_chitchat_node() -> Callable:
                 ]
             }
 
+        # Map LangChain message types to OpenAI roles
+        _role_map = {"human": "user", "ai": "assistant", "system": "system"}
+
         # Add system prompt as first message for context
         full_messages = [{"role": "system", "content": CHITCHAT_PROMPT}] + [
             {
-                "role": msg.type if hasattr(msg, "type") else "user",
+                "role": _role_map.get(msg.type if hasattr(msg, "type") else "", "user"),
                 "content": str(msg.content) if hasattr(msg, "content") else str(msg),
             }
             for msg in messages
