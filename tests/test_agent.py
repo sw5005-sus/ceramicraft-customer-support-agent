@@ -5,73 +5,104 @@ from unittest.mock import MagicMock, patch
 from ceramicraft_customer_support_agent.agent import build_agent, get_memory
 
 
-@patch("ceramicraft_customer_support_agent.agent.ChatOpenAI")
-@patch("ceramicraft_customer_support_agent.agent.create_agent")
-def test_build_agent_calls_create_agent(mock_create, mock_llm_cls):
-    """build_agent should call create_agent with the right args."""
+@patch("ceramicraft_customer_support_agent.agent.build_graph")
+def test_build_agent_calls_build_graph(mock_build_graph):
+    """build_agent should call build_graph with the right args."""
     mock_tool = MagicMock()
-    mock_create.return_value = MagicMock()
+    mock_graph = MagicMock()
+    mock_build_graph.return_value = mock_graph
 
     agent = build_agent([mock_tool])
 
-    mock_llm_cls.assert_called_once()
-    mock_create.assert_called_once()
-    assert agent is mock_create.return_value
-
-    call_kwargs = mock_create.call_args
-    assert call_kwargs.kwargs["tools"] == [mock_tool]
+    mock_build_graph.assert_called_once_with([mock_tool])
+    assert agent is mock_graph
 
 
-@patch("ceramicraft_customer_support_agent.agent.ChatOpenAI")
-@patch("ceramicraft_customer_support_agent.agent.create_agent")
-def test_build_agent_uses_configured_model(mock_create, mock_llm_cls):
-    """build_agent should use the model from settings."""
-    mock_create.return_value = MagicMock()
-
-    build_agent([])
-
-    call_kwargs = mock_llm_cls.call_args
-    assert call_kwargs.kwargs["model"] == "gpt-4o"
-
-
-@patch("ceramicraft_customer_support_agent.agent.ChatOpenAI")
-@patch("ceramicraft_customer_support_agent.agent.create_agent")
-def test_build_agent_with_empty_tools(mock_create, mock_llm_cls):
+@patch("ceramicraft_customer_support_agent.agent.build_graph")
+def test_build_agent_with_empty_tools(mock_build_graph):
     """build_agent should work with empty tool list."""
-    mock_create.return_value = MagicMock()
+    mock_graph = MagicMock()
+    mock_build_graph.return_value = mock_graph
 
     agent = build_agent([])
 
-    assert agent is mock_create.return_value
-    call_kwargs = mock_create.call_args
-    assert call_kwargs.kwargs["tools"] == []
+    mock_build_graph.assert_called_once_with([])
+    assert agent is mock_graph
 
 
-@patch("ceramicraft_customer_support_agent.agent.ChatOpenAI")
-@patch("ceramicraft_customer_support_agent.agent.create_agent")
-def test_build_agent_passes_system_prompt(mock_create, mock_llm_cls):
-    """build_agent should pass the system prompt."""
-    mock_create.return_value = MagicMock()
+@patch("ceramicraft_customer_support_agent.agent.build_graph")
+@patch("ceramicraft_customer_support_agent.agent.logger")
+def test_build_agent_logs_tool_count(mock_logger, mock_build_graph):
+    """build_agent should log the number of tools."""
+    mock_tools = [MagicMock(), MagicMock(), MagicMock()]
+    mock_graph = MagicMock()
+    mock_build_graph.return_value = mock_graph
 
-    build_agent([])
+    build_agent(mock_tools)
 
-    call_kwargs = mock_create.call_args
-    assert "system_prompt" in call_kwargs.kwargs
-    assert "CeramiCraft" in call_kwargs.kwargs["system_prompt"]
-
-
-@patch("ceramicraft_customer_support_agent.agent.ChatOpenAI")
-@patch("ceramicraft_customer_support_agent.agent.create_agent")
-def test_build_agent_uses_shared_memory(mock_create, mock_llm_cls):
-    """build_agent should use the shared MemorySaver."""
-    mock_create.return_value = MagicMock()
-
-    build_agent([])
-
-    call_kwargs = mock_create.call_args
-    assert call_kwargs.kwargs["checkpointer"] is get_memory()
+    mock_logger.info.assert_called_once()
+    log_call = mock_logger.info.call_args[0]
+    assert "3 tools" in log_call[0] or "3" in str(log_call[1:])
 
 
 def test_get_memory_returns_same_instance():
     """get_memory should always return the same MemorySaver."""
-    assert get_memory() is get_memory()
+    memory1 = get_memory()
+    memory2 = get_memory()
+
+    assert memory1 is memory2
+    assert hasattr(memory1, "put") or hasattr(memory1, "aget")  # MemorySaver methods
+
+
+@patch("ceramicraft_customer_support_agent.agent.build_graph")
+def test_build_agent_backward_compatibility(mock_build_graph):
+    """build_agent should maintain backward compatibility with old interface."""
+    mock_tool1 = MagicMock()
+    mock_tool1.name = "test_tool"
+
+    mock_tool2 = MagicMock()
+    mock_tool2.name = "another_tool"
+
+    mock_graph = MagicMock()
+    mock_build_graph.return_value = mock_graph
+
+    tools = [mock_tool1, mock_tool2]
+
+    result = build_agent(tools)
+
+    # Should return the graph directly (backward compatibility)
+    assert result is mock_graph
+
+    # Should pass tools to build_graph
+    mock_build_graph.assert_called_once_with(tools)
+
+
+@patch("ceramicraft_customer_support_agent.agent.build_graph")
+def test_build_agent_handles_various_tool_types(mock_build_graph):
+    """build_agent should handle different types of tool objects."""
+    mock_graph = MagicMock()
+    mock_build_graph.return_value = mock_graph
+
+    # Mock tools with different attributes
+    tool1 = MagicMock()
+    tool1.name = "tool1"
+    tool1.description = "First tool"
+
+    tool2 = MagicMock()
+    tool2.name = "tool2"
+
+    tools = [tool1, tool2]
+
+    result = build_agent(tools)
+
+    assert result is mock_graph
+    mock_build_graph.assert_called_once_with(tools)
+
+
+def test_get_memory_type():
+    """get_memory should return a MemorySaver instance."""
+    from langgraph.checkpoint.memory import MemorySaver
+
+    memory = get_memory()
+
+    assert isinstance(memory, MemorySaver)

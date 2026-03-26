@@ -82,8 +82,16 @@ def create_mcp_server() -> FastMCP:
                 tools = await discover_tools(session)
                 agent = build_agent(tools)
 
+                # Include auth token in the state for the new graph
+                initial_state = {
+                    "messages": [{"role": "user", "content": message}],
+                    "auth_token": token,
+                    "needs_confirm": False,
+                    "confirmed": False,
+                }
+
                 response = await agent.ainvoke(
-                    {"messages": [{"role": "user", "content": message}]},
+                    initial_state,
                     config={"configurable": {"thread_id": thread_id}},
                 )
         except Exception:
@@ -97,6 +105,13 @@ def create_mcp_server() -> FastMCP:
         for msg in reversed(messages):
             if hasattr(msg, "type") and msg.type == "ai" and msg.content:
                 return {"reply": msg.content}
+            # Also handle dict format
+            if (
+                isinstance(msg, dict)
+                and msg.get("role") == "assistant"
+                and msg.get("content")
+            ):
+                return {"reply": msg["content"]}
 
         return {"reply": "I'm sorry, I couldn't process your request."}
 

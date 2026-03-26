@@ -1,0 +1,113 @@
+"""Safety guard node for post-processing responses."""
+
+from collections.abc import Callable
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Operations that require confirmation
+SENSITIVE_OPERATIONS = {"delete_address", "confirm_receipt"}
+
+# Operations that require authentication
+AUTH_REQUIRED_OPERATIONS = {
+    "get_cart",
+    "add_to_cart",
+    "update_cart_item",
+    "remove_cart_item",
+    "estimate_cart_price",
+    "list_my_orders",
+    "get_order_detail",
+    "confirm_receipt",
+    "get_order_stats",
+    "create_order",
+    "create_review",
+    "like_review",
+    "get_user_reviews",
+    "get_my_profile",
+    "update_my_profile",
+    "list_my_addresses",
+    "create_address",
+    "update_address",
+    "delete_address",
+}
+
+
+def build_guard() -> Callable:
+    """Build the safety guard node.
+
+    Checks for auth requirements and sensitive operations,
+    adding intervention messages when needed.
+
+    Returns:
+        A callable that takes AgentState and returns updated state.
+    """
+
+    def guard_node(state: dict) -> dict:
+        """Apply safety checks and interventions."""
+        auth_token = state.get("auth_token")
+        confirmed = state.get("confirmed", False)
+        messages = state.get("messages", [])
+
+        # Check last messages for tool usage patterns
+        recent_messages = messages[-5:] if messages else []
+
+        # Look for auth errors or tool calls requiring auth
+        needs_auth_prompt = False
+        needs_confirmation_prompt = False
+        sensitive_op_detected = None
+
+        for msg in recent_messages:
+            msg_content = str(msg.content) if hasattr(msg, "content") else str(msg)
+
+            # Check for auth-related errors in responses
+            if (
+                "auth" in msg_content.lower()
+                or "login" in msg_content.lower()
+                or "unauthorized" in msg_content.lower()
+            ):
+                if not auth_token:
+                    needs_auth_prompt = True
+
+            # Check for sensitive operations in tool calls
+            for op in SENSITIVE_OPERATIONS:
+                if op in msg_content:
+                    sensitive_op_detected = op
+                    if not confirmed:
+                        needs_confirmation_prompt = True
+                    break
+
+        new_messages = []
+        updates = {}
+
+        # Handle auth requirement
+        if needs_auth_prompt and not auth_token:
+            auth_message = (
+                "To access your account information, cart, orders, or create reviews, "
+                "you'll need to log in first. Please visit our website to sign in, "
+                "then come back and I'll be happy to help!"
+            )
+            new_messages.append({"role": "assistant", "content": auth_message})
+            logger.info("Added auth requirement message")
+
+        # Handle confirmation requirement
+        if needs_confirmation_prompt and sensitive_op_detected and not confirmed:
+            confirm_messages = {
+                "delete_address": "Are you sure you want to delete this address? This action cannot be undone.",
+                "confirm_receipt": "Please confirm that you have received your order and are satisfied with it.",
+            }
+
+            confirm_message = confirm_messages.get(
+                sensitive_op_detected,
+                f"This action requires confirmation. Are you sure you want to proceed with {sensitive_op_detected}?",
+            )
+
+            new_messages.append({"role": "assistant", "content": confirm_message})
+            updates["needs_confirm"] = True
+            logger.info("Added confirmation requirement for %s", sensitive_op_detected)
+
+        if new_messages:
+            updates["messages"] = new_messages
+
+        return updates
+
+    return guard_node

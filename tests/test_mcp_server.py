@@ -106,6 +106,15 @@ async def test_chat_returns_agent_reply(mock_session, mock_discover, mock_build)
     assert result == {"reply": "Here are some ceramic cups!"}
     mock_session.assert_called_once_with(token="test_token")
 
+    # Verify the agent was called with the new state format
+    call_args = mock_agent.ainvoke.call_args
+    state = call_args[0][0]
+    assert "messages" in state
+    assert "auth_token" in state
+    assert "needs_confirm" in state
+    assert "confirmed" in state
+    assert state["auth_token"] == "test_token"
+
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
 @patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
@@ -134,6 +143,11 @@ async def test_chat_without_token(mock_session, mock_discover, mock_build):
 
     assert result == {"reply": "We have vases and cups."}
     mock_session.assert_called_once_with(token=None)
+
+    # Verify auth_token is None in state
+    call_args = mock_agent.ainvoke.call_args
+    state = call_args[0][0]
+    assert state["auth_token"] is None
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
@@ -165,6 +179,31 @@ async def test_chat_skips_non_ai_messages(mock_session, mock_discover, mock_buil
     ctx = MagicMock(spec=[])
     result = await chat_fn(ctx=ctx, message="test", thread_id="t1")
     assert result == {"reply": "Summary."}
+
+
+@patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
+@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
+@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
+async def test_chat_handles_dict_messages(mock_session, mock_discover, mock_build):
+    """chat should handle dict format messages from the new graph."""
+    mock_sess = AsyncMock()
+    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
+    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    mock_discover.return_value = []
+
+    mock_agent = AsyncMock()
+    mock_agent.ainvoke.return_value = {
+        "messages": [{"role": "assistant", "content": "Here's your response!"}]
+    }
+    mock_build.return_value = mock_agent
+
+    mcp = mcp_server.create_mcp_server()
+    chat_fn = mcp._tool_manager._tools["chat"].fn
+
+    ctx = MagicMock(spec=[])
+    result = await chat_fn(ctx=ctx, message="test", thread_id="t1")
+    assert result == {"reply": "Here's your response!"}
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
@@ -208,6 +247,50 @@ async def test_chat_raises_tool_error_on_exception(mock_session):
     ctx = MagicMock(spec=[])
     with pytest.raises(ToolError, match="something went wrong"):
         await chat_fn(ctx=ctx, message="hi", thread_id="t1")
+
+
+@patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
+@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
+@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
+async def test_chat_initializes_state_correctly(
+    mock_session, mock_discover, mock_build
+):
+    """chat should initialize state with correct default values."""
+    mock_sess = AsyncMock()
+    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
+    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    mock_discover.return_value = []
+
+    mock_agent = AsyncMock()
+    mock_agent.ainvoke.return_value = {
+        "messages": [{"role": "assistant", "content": "test response"}]
+    }
+    mock_build.return_value = mock_agent
+
+    mcp = mcp_server.create_mcp_server()
+    chat_fn = mcp._tool_manager._tools["chat"].fn
+
+    ctx = MagicMock()
+    ctx.headers = {"authorization": "Bearer test123"}
+    await chat_fn(ctx=ctx, message="hello", thread_id="thread123")
+
+    # Check the initial state passed to agent
+    call_args = mock_agent.ainvoke.call_args
+    initial_state = call_args[0][0]
+
+    expected_state = {
+        "messages": [{"role": "user", "content": "hello"}],
+        "auth_token": "test123",
+        "needs_confirm": False,
+        "confirmed": False,
+    }
+
+    assert initial_state == expected_state
+
+    # Check the config
+    config = call_args[1]["config"]
+    assert config["configurable"]["thread_id"] == "thread123"
 
 
 # --- reset tool tests ---

@@ -7,23 +7,71 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 ## Architecture
 
 ```
-                       ┌──────────────────────────────────┐
-                       │   Customer Support Agent          │
-  User / Orchestrator  │                                   │
-  ───MCP (chat)──────▶ │  FastMCP Server                   │
-                       │    │                              │
-                       │    ├─ extract Bearer token        │
-                       │    ├─ MCP Client (per-request)    │
-                       │    │   └─ forward token ──────────┼──▶ CeramiCraft MCP Server
-                       │    ├─ discover tools              │         │
-                       │    ├─ build ReAct agent            │    HTTP (internal)
-                       │    └─ invoke (shared memory)       │         │
-                       │                                   │         ▼
-                       └──────────────────────────────────┘   Backend Services
+                       ┌────────────────────────────────────────────────────────┐
+                       │   Customer Support Agent (LangGraph StateGraph)        │
+  User / Orchestrator  │                                                         │
+  ───MCP (chat)──────▶ │  FastMCP Server                                        │
+                       │    │                                                    │
+                       │    ├─ extract Bearer token                              │
+                       │    ├─ MCP Client (per-request)                         │
+                       │    │   └─ forward token ──────────────────────────────┼──▶ CeramiCraft MCP Server
+                       │    ├─ discover tools                                   │         │
+                       │    ├─ build graph agent                                │    HTTP (internal)
+                       │    │   │                                               │         │
+                       │    │   └─ User Message → Classifier → Router ────────┐│         ▼
+                       │    │                         │                        ││   Backend Services
+                       │    │                         ▼                        ││
+                       │    │     ┌─────────┐  ┌─────────┐  ┌─────────┐       ││
+                       │    │     │ Browse  │  │  Cart   │  │ Order   │       ││
+                       │    │     │ Subgraph│  │Subgraph │  │Subgraph │       ││
+                       │    │     └─────────┘  └─────────┘  └─────────┘       ││
+                       │    │            │           │           │            ││
+                       │    │     ┌─────────┐  ┌─────────┐  ┌─────────┐       ││
+                       │    │     │ Review  │  │Account  │  │Chitchat │       ││
+                       │    │     │Subgraph │  │Subgraph │  │  Node   │       ││
+                       │    │     └─────────┘  └─────────┘  └─────────┘       ││
+                       │    │            │           │           │            ││
+                       │    │            └───────────┼───────────┘            ││
+                       │    │                        ▼                        ││
+                       │    │                  ┌─────────┐                    ││
+                       │    │                  │  Guard  │                    ││
+                       │    │                  │  Node   │                    ││
+                       │    │                  └─────────┘                    ││
+                       │    │                        │                        ││
+                       │    └─ invoke (shared memory)│                        ││
+                       │                             ▼                        │
+                       │                       Response                       │
+                       └────────────────────────────────────────────────────────┘
 ```
 
-Each `chat` call creates a fresh MCP session with the user's auth token,
-discovers available tools, and invokes the LangGraph agent. Conversation
+### Graph Flow
+
+1. **User Message** enters the system via MCP chat tool
+2. **Classifier** analyzes intent using LLM (no tools): `browse`, `cart`, `order`, `review`, `account`, `chitchat`, `escalate`
+3. **Router** sends to appropriate domain subgraph based on intent
+4. **Domain Subgraphs** (ReAct agents with filtered tools):
+   - **Browse**: search_products, get_product, list_product_reviews
+   - **Cart**: get_cart, add_to_cart, update_cart_item, remove_cart_item, estimate_cart_price, search_products
+   - **Order**: list_my_orders, get_order_detail, confirm_receipt, get_order_stats, create_order
+   - **Review**: create_review, like_review, get_user_reviews, list_product_reviews
+   - **Account**: get_my_profile, update_my_profile, list_my_addresses, create_address, update_address, delete_address
+5. **Guard** post-processes responses to check for:
+   - Auth requirements (prompts for login if needed)
+   - Sensitive operations (requests confirmation for deletions, etc.)
+
+### State Management
+
+```python
+class AgentState(TypedDict):
+    messages: Annotated[list, add_messages]  # Conversation history
+    intent: str                              # Classified user intent
+    auth_token: str | None                   # Bearer token from request
+    needs_confirm: bool                      # Requires user confirmation
+    confirmed: bool                          # User has confirmed action
+```
+
+Each request creates a fresh MCP session with the user's auth token,
+discovers available tools, and invokes the LangGraph StateGraph. Conversation
 history is preserved across requests via a shared `MemorySaver`.
 
 ## Available Tools (via MCP)
@@ -32,7 +80,7 @@ history is preserved across requests via a shared `MemorySaver`.
 |----------|-------|------------|
 | Product | search_products, get_product | PUBLIC |
 | Cart | get_cart, add_to_cart, update_cart_item, remove_cart_item, estimate_cart_price | USER |
-| Order | list_my_orders, get_order_detail | USER |
+| Order | list_my_orders, get_order_detail, confirm_receipt, get_order_stats, create_order | USER |
 | Review | list_product_reviews, get_user_reviews, create_review, like_review | PUBLIC / USER |
 | User | get_my_profile, update_my_profile, list_my_addresses, create_address, update_address, delete_address | USER |
 
