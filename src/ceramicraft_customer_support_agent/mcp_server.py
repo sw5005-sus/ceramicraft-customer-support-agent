@@ -16,7 +16,7 @@ from ceramicraft_customer_support_agent.mcp_client import discover_tools
 logger = logging.getLogger(__name__)
 
 # Module-level agent reference, populated during lifespan startup
-_agent = None
+_agent: Any = None
 
 
 @asynccontextmanager
