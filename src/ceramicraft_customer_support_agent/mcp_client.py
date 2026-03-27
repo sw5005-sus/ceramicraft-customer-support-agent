@@ -9,6 +9,7 @@ from langchain_mcp_adapters.interceptors import (
     MCPToolCallRequest,
     MCPToolCallResult,
 )
+from langchain_mcp_adapters.sessions import StreamableHttpConnection
 from langchain_mcp_adapters.tools import load_mcp_tools
 
 from ceramicraft_customer_support_agent.config import get_settings
@@ -77,7 +78,7 @@ class PersistentMCPClient:
         """Discover tools via a temporary connection session."""
         settings = get_settings()
 
-        connection = {
+        connection: StreamableHttpConnection = {
             "transport": "streamable_http",
             "url": settings.MCP_SERVER_URL,
         }

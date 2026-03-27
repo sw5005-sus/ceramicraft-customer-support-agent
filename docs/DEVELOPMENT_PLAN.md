@@ -15,7 +15,7 @@ _最后更新：2026-03-27_
 | Agent 架构 | LangGraph StateGraph：意图分类 → 条件路由 → 领域子图（ReAct）→ 安全守卫 |
 | LLM | OpenAI GPT-4o |
 | 设计原则 | Prompt Engineering + Context Engineering + 渐进式披露 |
-| MCP Client | 持久化连接——PersistentMCPClient 单例管理下游 MCP Server 的长生命周期 session |
+| MCP Client | PersistentMCPClient 单例（connection 模式），工具列表缓存，每次调用建临时 session |
 
 ---
 
@@ -55,9 +55,9 @@ _最后更新：2026-03-27_
 
 ### 工具发现
 
-Tools 从 ceramicraft-mcp-server **动态发现**（启动时通过 PersistentMCPClient 拉取 `list_tools`，结果缓存），转换为 LangChain Tool 格式注入 agent。MCP Server 新增 tool 时 agent 无需改代码。
+Tools 从 ceramicraft-mcp-server **动态发现**（启动时通过 PersistentMCPClient 建临时 session 拉取 `list_tools`，结果缓存），转换为 LangChain Tool 格式注入 agent。MCP Server 新增 tool 时 agent 无需改代码。
 
-MCP Client 维持一个长生命周期 session（`PersistentMCPClient` 单例），因为 `load_mcp_tools()` 返回的 tools 绑定了创建时的 session——session 关闭后 tools 会抛 `ClosedResourceError`。
+MCP Client 使用 **connection 模式**（`session=None, connection=StreamableHttpConnection`），每次 tool 调用建临时 HTTP session，`_AuthInterceptor` 将 per-request Bearer token 注入到 connection headers。
 
 ### 对话隔离
 
@@ -93,7 +93,7 @@ RuntimeError: Attempted to exit a cancel scope that isn't the current task's cur
 
 FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的 cancel scope 内，因此不受影响。
 
-旧的 `mcp_server.py` 保留作为备用/参考代码。
+旧的 `mcp_server.py` 已删除（commit `8fe6218`）。
 
 ### 渐进式披露
 
@@ -110,9 +110,9 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - 存入 AgentState.auth_token，Guard 节点检查
 
 ### 1.2 MCP Client（调下游）
-- PersistentMCPClient 单例连接 ceramicraft-mcp-server（Streamable HTTP）
-- 工具发现：启动时从 MCP Server 拉取可用 tools 列表（结果缓存）
-- 支持 reconnect() 应对下游重启
+- PersistentMCPClient 单例（connection 模式）连接 ceramicraft-mcp-server（Streamable HTTP）
+- 工具发现：启动时建临时 session 拉取可用 tools 列表（结果缓存）
+- 每次 tool 调用建临时 session，_AuthInterceptor 注入 per-request auth header
 
 ### 1.3 LangGraph Agent
 - StateGraph：Classifier → Router → Domain Subgraphs → Guard
@@ -214,8 +214,7 @@ ceramicraft-customer-support-agent/
 │   ├── guard.py                      # 安全守卫节点（auth 检查 + 敏感操作确认）
 │   ├── nodes.py                      # 轻量节点（chitchat + escalate，无工具）
 │   ├── subgraphs.py                  # 领域子图（5 个 stateless ReAct agent builder）
-│   ├── mcp_client.py                 # MCP Client（PersistentMCPClient 单例，持久连接 ceramicraft-mcp-server）
-│   ├── mcp_server.py                 # [LEGACY] FastMCP Server（保留备用，不再被 serve.py 使用）
+│   ├── mcp_client.py                 # MCP Client（PersistentMCPClient 单例，connection 模式 + auth interceptor）
 │   └── prompts.py                    # System prompt 模板（主 + 6 个领域）
 ├── tests/
 │   ├── conftest.py
@@ -224,8 +223,7 @@ ceramicraft-customer-support-agent/
 │   ├── test_config.py
 │   ├── test_graph.py
 │   ├── test_guard.py
-│   ├── test_mcp_client.py            # PersistentMCPClient 测试
-│   ├── test_mcp_server.py            # Legacy MCP Server 测试
+│   ├── test_mcp_client.py            # PersistentMCPClient + AuthInterceptor 测试
 │   ├── test_nodes.py
 │   ├── test_prompts.py
 │   ├── test_serve.py                 # FastAPI 端点测试（新增）
