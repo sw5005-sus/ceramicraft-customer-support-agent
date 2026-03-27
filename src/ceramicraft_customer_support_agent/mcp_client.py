@@ -1,4 +1,4 @@
-"""MCP Client — persistent session and tool discovery."""
+"""MCP Client — tool discovery + per-request auth injection."""
 
 import asyncio
 import contextvars
@@ -10,8 +10,6 @@ from langchain_mcp_adapters.interceptors import (
     MCPToolCallResult,
 )
 from langchain_mcp_adapters.tools import load_mcp_tools
-from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
 
 from ceramicraft_customer_support_agent.config import get_settings
 
@@ -49,80 +47,61 @@ class _AuthInterceptor:
 
 
 class PersistentMCPClient:
-    """Maintains a long-lived MCP session so tool handles stay valid.
+    """Discovers and caches MCP tools using connection mode.
 
-    ``load_mcp_tools()`` binds each tool to the session that created it.
-    If that session closes, the tools raise ``ClosedResourceError``.
-    This class keeps the session open for the lifetime of the process
-    and exposes a reconnect path in case the upstream server restarts.
+    ``langchain-mcp-adapters`` only injects interceptor headers when
+    ``session=None`` and a ``connection`` config is provided.  Each tool
+    call creates a short-lived MCP session via the connection, which
+    lets ``_AuthInterceptor`` inject per-request Bearer tokens into the
+    HTTP headers.
+
+    Tool *discovery* also goes through the connection (one-shot session
+    to list tools), but the tool list is cached — subsequent calls to
+    ``get_tools()`` return the cached list without reconnecting.
     """
 
     def __init__(self) -> None:
-        self._session: ClientSession | None = None
-        self._session_cm: Any = None  # ClientSession context manager
         self._tools: list[Any] | None = None
-        self._transport_cm: Any = None  # streamablehttp_client context manager
         self._lock = asyncio.Lock()
 
     async def get_tools(self) -> list[Any]:
-        """Return cached tools, connecting on first call."""
-        if self._tools is not None and self._session is not None:
+        """Return cached tools, discovering on first call."""
+        if self._tools is not None:
             return self._tools
         async with self._lock:
-            # Double-check after acquiring lock
-            if self._tools is not None and self._session is not None:
+            if self._tools is not None:
                 return self._tools
             return await self._connect()
 
     async def _connect(self) -> list[Any]:
-        """Open a persistent MCP session and discover tools."""
-        await self._close()
-
+        """Discover tools via a temporary connection session."""
         settings = get_settings()
-        headers: dict[str, str] = {}
 
-        # Open streamable-http transport — we hold references to keep
-        # the underlying connection alive.
-        self._transport_cm = streamablehttp_client(
-            settings.MCP_SERVER_URL, headers=headers
-        )
-        read, write, _ = await self._transport_cm.__aenter__()
+        connection = {
+            "transport": "streamable_http",
+            "url": settings.MCP_SERVER_URL,
+        }
 
-        self._session_cm = ClientSession(read, write)
-        self._session = await self._session_cm.__aenter__()
-        await self._session.initialize()
-
+        # session=None forces connection mode:
+        # - discovery: creates a temp session to list tools
+        # - execution: each tool call creates a temp session with
+        #   interceptor headers merged into connection headers
         self._tools = await load_mcp_tools(
-            self._session,
+            session=None,
+            connection=connection,
             tool_interceptors=[_AuthInterceptor()],
         )
         logger.info(
-            "Persistent MCP session established — discovered %d tools",
+            "MCP tools discovered — %d tools (connection mode)",
             len(self._tools),
         )
         return self._tools
 
     async def reconnect(self) -> list[Any]:
-        """Force-reconnect (e.g. after upstream restart)."""
+        """Force-reconnect and re-discover tools."""
         async with self._lock:
+            self._tools = None
             return await self._connect()
-
-    async def _close(self) -> None:
-        """Best-effort cleanup of existing session."""
-        if self._session_cm is not None:
-            try:
-                await self._session_cm.__aexit__(None, None, None)
-            except Exception:
-                pass
-            self._session_cm = None
-            self._session = None
-        if self._transport_cm is not None:
-            try:
-                await self._transport_cm.__aexit__(None, None, None)
-            except Exception:
-                pass
-            self._transport_cm = None
-        self._tools = None
 
 
 # Module-level singleton
