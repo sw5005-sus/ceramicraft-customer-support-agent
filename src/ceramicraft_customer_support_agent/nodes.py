@@ -40,12 +40,14 @@ def build_chitchat_node() -> Callable:
         _role_map = {"human": "user", "ai": "assistant", "system": "system"}
 
         # Add system prompt as first message for context
+        # Filter out tool-related messages that don't map to valid roles
         full_messages = [{"role": "system", "content": CHITCHAT_PROMPT}] + [
             {
-                "role": _role_map.get(msg.type if hasattr(msg, "type") else "", "user"),
+                "role": _role_map[msg.type],
                 "content": str(msg.content) if hasattr(msg, "content") else str(msg),
             }
             for msg in messages
+            if hasattr(msg, "type") and msg.type in _role_map
         ]
 
         try:

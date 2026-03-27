@@ -82,26 +82,27 @@ def create_mcp_server() -> FastMCP:
         token = _extract_bearer_token(ctx)
 
         try:
-            async with mcp_session(token=token) as session:
-                # Build graph once; reuse on subsequent requests.
-                if "agent" not in _agent_cache:
+            # Build graph once; reuse on subsequent requests.
+            # Only open an MCP session when we need to discover tools.
+            if "agent" not in _agent_cache:
+                async with mcp_session(token=token) as session:
                     tools = await discover_tools(session)
                     _agent_cache["agent"] = build_agent(tools)
 
-                agent = _agent_cache["agent"]
+            agent = _agent_cache["agent"]
 
-                # Include auth token in the state for the new graph
-                initial_state = {
-                    "messages": [{"role": "user", "content": message}],
-                    "auth_token": token,
-                    "needs_confirm": False,
-                    "confirmed": False,
-                }
+            # Include auth token in the state for the new graph
+            initial_state = {
+                "messages": [{"role": "user", "content": message}],
+                "auth_token": token,
+                "needs_confirm": False,
+                "confirmed": False,
+            }
 
-                response = await agent.ainvoke(
-                    initial_state,
-                    config={"configurable": {"thread_id": thread_id}},
-                )
+            response = await agent.ainvoke(
+                initial_state,
+                config={"configurable": {"thread_id": thread_id}},
+            )
         except Exception:
             logger.exception("Agent invocation failed")
             raise ToolError(

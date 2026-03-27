@@ -63,12 +63,12 @@ def build_graph(tools: Sequence[BaseTool]) -> Any:
     classifier = build_classifier()
     guard = build_guard()
 
-    # Build domain subgraphs
-    browse_agent = build_browse_subgraph(tools, memory)
-    cart_agent = build_cart_subgraph(tools, memory)
-    order_agent = build_order_subgraph(tools, memory)
-    review_agent = build_review_subgraph(tools, memory)
-    account_agent = build_account_subgraph(tools, memory)
+    # Build domain subgraphs (stateless — main graph owns the checkpointer)
+    browse_agent = build_browse_subgraph(tools)
+    cart_agent = build_cart_subgraph(tools)
+    order_agent = build_order_subgraph(tools)
+    review_agent = build_review_subgraph(tools)
+    account_agent = build_account_subgraph(tools)
     chitchat_node = build_chitchat_node()
     escalate_node = build_escalate_node()
 
@@ -142,12 +142,43 @@ def route_by_intent(state: AgentState) -> str:
     return intent
 
 
+def _sanitize_messages(messages: list) -> list:
+    """Remove orphaned tool_calls that lack a corresponding ToolMessage.
+
+    The classifier uses ``with_structured_output`` which internally relies on
+    function-calling.  This leaves AIMessages with ``tool_calls`` in the
+    history but *no* matching ToolMessage, which LangGraph's
+    ``_validate_chat_history`` rightfully rejects.
+
+    This helper strips those orphaned AIMessages so downstream subgraphs
+    receive a clean history.
+    """
+    from langchain_core.messages import AIMessage, ToolMessage
+
+    # Collect all tool_call ids that have a matching ToolMessage
+    answered_ids: set[str] = set()
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            answered_ids.add(msg.tool_call_id)
+
+    clean: list = []
+    for msg in messages:
+        if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
+            # Keep only if every tool_call has a matching ToolMessage
+            if all(tc["id"] in answered_ids for tc in msg.tool_calls):
+                clean.append(msg)
+            # else: drop orphaned AIMessage silently
+        else:
+            clean.append(msg)
+    return clean
+
+
 def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
     """Wrap a subgraph agent to work with the main graph state.
 
     Args:
         subgraph: A compiled LangGraph agent from create_react_agent.
-        domain: Domain name used to isolate checkpointer thread.
+        domain: Domain name for logging.
 
     Returns:
         An async callable that extracts messages, invokes the subgraph,
@@ -157,14 +188,19 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
     async def subgraph_node(state: AgentState) -> dict:
         """Invoke a domain subgraph with the current state."""
         try:
-            messages = state.get("messages", [])
+            messages = _sanitize_messages(state.get("messages", []))
 
             result = await subgraph.ainvoke(
                 {"messages": messages},
-                config={"configurable": {"thread_id": f"subgraph-{domain}"}},
             )
 
-            return {"messages": result.get("messages", [])}
+            # Return only the *new* messages the subgraph produced so
+            # add_messages in the parent graph doesn't duplicate history.
+            new_messages = result.get("messages", [])
+            if len(new_messages) > len(messages):
+                new_messages = new_messages[len(messages):]
+
+            return {"messages": new_messages}
 
         except Exception:
             logger.exception("Subgraph invocation failed")
