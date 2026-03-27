@@ -1,8 +1,8 @@
-"""MCP Client — tool discovery and per-request session management."""
+"""MCP Client — persistent session and tool discovery."""
 
+import asyncio
 import logging
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from typing import Any
 
 from langchain_mcp_adapters.tools import load_mcp_tools
 from mcp import ClientSession
@@ -13,47 +13,88 @@ from ceramicraft_customer_support_agent.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def mcp_session(
-    token: str | None = None,
-) -> AsyncIterator[ClientSession]:
-    """Create an MCP client session with optional auth token.
+class PersistentMCPClient:
+    """Maintains a long-lived MCP session so tool handles stay valid.
 
-    Usage::
-
-        async with mcp_session(token="eyJ...") as session:
-            tools = await discover_tools(session)
-
-    Args:
-        token: Optional Bearer token to forward to the MCP Server.
-
-    Yields:
-        An initialized MCP ClientSession.
+    ``load_mcp_tools()`` binds each tool to the session that created it.
+    If that session closes, the tools raise ``ClosedResourceError``.
+    This class keeps the session open for the lifetime of the process
+    and exposes a reconnect path in case the upstream server restarts.
     """
-    settings = get_settings()
-    headers: dict[str, str] = {}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
 
-    async with streamablehttp_client(settings.MCP_SERVER_URL, headers=headers) as (
-        read,
-        write,
-        _,
-    ):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            yield session
+    def __init__(self) -> None:
+        self._session: ClientSession | None = None
+        self._tools: list[Any] | None = None
+        self._cleanup: Any = None  # reference to the context-manager stack
+        self._lock = asyncio.Lock()
+
+    async def get_tools(self) -> list[Any]:
+        """Return cached tools, connecting on first call."""
+        if self._tools is not None and self._session is not None:
+            return self._tools
+        async with self._lock:
+            # Double-check after acquiring lock
+            if self._tools is not None and self._session is not None:
+                return self._tools
+            return await self._connect()
+
+    async def _connect(self) -> list[Any]:
+        """Open a persistent MCP session and discover tools."""
+        await self._close()
+
+        settings = get_settings()
+        headers: dict[str, str] = {}
+
+        # Open streamable-http transport — we hold references to keep
+        # the underlying connection alive.
+        transport_cm = streamablehttp_client(
+            settings.MCP_SERVER_URL, headers=headers
+        )
+        read, write, _ = await transport_cm.__aenter__()
+        self._cleanup = transport_cm
+
+        session_cm = ClientSession(read, write)
+        self._session = await session_cm.__aenter__()
+        await self._session.initialize()
+
+        self._tools = await load_mcp_tools(self._session)
+        logger.info(
+            "Persistent MCP session established — discovered %d tools",
+            len(self._tools),
+        )
+        return self._tools
+
+    async def reconnect(self) -> list[Any]:
+        """Force-reconnect (e.g. after upstream restart)."""
+        async with self._lock:
+            return await self._connect()
+
+    async def _close(self) -> None:
+        """Best-effort cleanup of existing session."""
+        if self._session is not None:
+            try:
+                await self._session.__aexit__(None, None, None)
+            except Exception:
+                pass
+            self._session = None
+        if self._cleanup is not None:
+            try:
+                await self._cleanup.__aexit__(None, None, None)
+            except Exception:
+                pass
+            self._cleanup = None
+        self._tools = None
 
 
-async def discover_tools(session: ClientSession) -> list:
-    """Discover tools from the MCP Server and convert to LangChain format.
+# Module-level singleton
+_mcp_client = PersistentMCPClient()
 
-    Args:
-        session: An initialized MCP ClientSession.
 
-    Returns:
-        List of LangChain-compatible tools.
-    """
-    tools = await load_mcp_tools(session)
-    logger.info("Discovered %d tools from MCP Server", len(tools))
-    return tools
+async def get_tools() -> list[Any]:
+    """Get MCP tools via the persistent session (preferred entry-point)."""
+    return await _mcp_client.get_tools()
+
+
+async def reconnect_tools() -> list[Any]:
+    """Force-reconnect and re-discover tools."""
+    return await _mcp_client.reconnect()

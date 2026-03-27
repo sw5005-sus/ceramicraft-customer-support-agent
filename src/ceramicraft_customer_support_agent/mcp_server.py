@@ -8,7 +8,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 
 from ceramicraft_customer_support_agent.agent import build_agent
 from ceramicraft_customer_support_agent.config import get_settings
-from ceramicraft_customer_support_agent.mcp_client import discover_tools, mcp_session
+from ceramicraft_customer_support_agent.mcp_client import get_tools
 
 logger = logging.getLogger(__name__)
 
@@ -83,11 +83,11 @@ def create_mcp_server() -> FastMCP:
 
         try:
             # Build graph once; reuse on subsequent requests.
-            # Only open an MCP session when we need to discover tools.
+            # get_tools() maintains a persistent MCP session so the
+            # tool handles remain valid across requests.
             if "agent" not in _agent_cache:
-                async with mcp_session(token=token) as session:
-                    tools = await discover_tools(session)
-                    _agent_cache["agent"] = build_agent(tools)
+                tools = await get_tools()
+                _agent_cache["agent"] = build_agent(tools)
 
             agent = _agent_cache["agent"]
 
