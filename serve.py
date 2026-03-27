@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from ceramicraft_customer_support_agent.agent import build_agent
 from ceramicraft_customer_support_agent.config import get_settings
-from ceramicraft_customer_support_agent.mcp_client import get_tools
+from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token
 
 # Apply dttb tracebacks for timestamps on exceptions
 dttb.apply()
@@ -64,7 +64,7 @@ app = FastAPI(
 class ChatRequest(BaseModel):
     message: str = Field(..., description="The user's message or question.")
     thread_id: str = Field(
-        default="default",
+        ...,
         description="Conversation thread identifier for multi-turn context.",
     )
 
@@ -98,6 +98,9 @@ async def chat(body: ChatRequest, request: Request):
             _agent_cache["agent"] = build_agent(tools)
 
         agent = _agent_cache["agent"]
+
+        # Set per-request auth token so the MCP interceptor can inject it
+        set_auth_token(token)
 
         initial_state = {
             "messages": [{"role": "user", "content": body.message}],
@@ -135,7 +138,7 @@ async def chat(body: ChatRequest, request: Request):
 
 
 @app.post("/reset", response_model=ResetResponse)
-async def reset(thread_id: str = "default"):
+async def reset(thread_id: str):
     """Reset the conversation history for a given thread."""
     return ResetResponse(
         status="ok",

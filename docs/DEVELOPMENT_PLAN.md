@@ -66,11 +66,22 @@ MCP Client 维持一个长生命周期 session（`PersistentMCPClient` 单例）
 ### Token 透传链路
 
 ```
-用户 JWT ──▶ Agent (FastAPI, 提取 Bearer token) ──▶ AgentState.auth_token ──▶ Guard 检查
+用户 JWT ──▶ Agent (FastAPI, 提取 Bearer token)
+                │
+                ├─▶ AgentState.auth_token ──▶ Guard 检查
+                │
+                └─▶ set_auth_token(token)  ──▶ contextvars.ContextVar
+                                                     │
+                     _AuthInterceptor ◀──────────────┘
+                         │
+                         ▼
+                     MCPToolCallRequest.override(headers={"authorization": "Bearer ..."})
+                         │
+                         ▼
+                     下游 MCP Server (ceramicraft-mcp-server)
 ```
 
-Agent 不做 JWT 验证。当前 token 用于 Guard 判断是否需要提示用户登录。
-TODO: 后续需要将 token 注入到下游 MCP tool 调用中，实现端到端透传。
+Agent 不做 JWT 验证。token 通过 `contextvars.ContextVar` 传递给 `_AuthInterceptor`（`langchain-mcp-adapters` ToolCallInterceptor），在每次 MCP tool 调用时注入 Authorization header。支持并发请求——每个 asyncio Task 有独立的 context。
 
 ### 为什么用 FastAPI 而不是 FastMCP
 
@@ -231,7 +242,7 @@ ceramicraft-customer-support-agent/
 - [ ] top_up_account / get_pay_account（支付）— 需安全措施
 - [ ] register_push_token（通知）— 优先级低
 - [ ] PostgreSQL checkpoint 持久化
-- [ ] Token 端到端透传到下游 MCP Server
-- [ ] thread_id 改为必传参数
+- [x] ~~Token 端到端透传到下游 MCP Server~~ — 已完成（ContextVar + _AuthInterceptor）
+- [x] ~~thread_id 改为必传参数~~ — 已完成
 - [x] ~~子图拆分（按意图路由）~~ — 已完成
 - [x] ~~FastMCP → FastAPI~~ — 已完成（anyio/asyncio 冲突）

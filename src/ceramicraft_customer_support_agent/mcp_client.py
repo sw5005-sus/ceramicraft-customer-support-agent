@@ -1,9 +1,14 @@
 """MCP Client — persistent session and tool discovery."""
 
 import asyncio
+import contextvars
 import logging
 from typing import Any
 
+from langchain_mcp_adapters.interceptors import (
+    MCPToolCallRequest,
+    MCPToolCallResult,
+)
 from langchain_mcp_adapters.tools import load_mcp_tools
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
@@ -11,6 +16,36 @@ from mcp.client.streamable_http import streamablehttp_client
 from ceramicraft_customer_support_agent.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# ── Per-request auth token (set before each agent invocation) ──
+_current_auth_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "_current_auth_token", default=None
+)
+
+
+def set_auth_token(token: str | None) -> None:
+    """Set the auth token for the current request context."""
+    _current_auth_token.set(token)
+
+
+class _AuthInterceptor:
+    """Injects the per-request Bearer token into MCP tool call headers.
+
+    Reads from ``_current_auth_token`` context-var so each concurrent
+    request carries its own user token.
+    """
+
+    async def __call__(
+        self,
+        request: MCPToolCallRequest,
+        handler: Any,
+    ) -> MCPToolCallResult:
+        token = _current_auth_token.get()
+        if token:
+            headers = dict(request.headers or {})
+            headers["authorization"] = f"Bearer {token}"
+            request = request.override(headers=headers)
+        return await handler(request)
 
 
 class PersistentMCPClient:
@@ -57,7 +92,10 @@ class PersistentMCPClient:
         self._session = await self._session_cm.__aenter__()
         await self._session.initialize()
 
-        self._tools = await load_mcp_tools(self._session)
+        self._tools = await load_mcp_tools(
+            self._session,
+            tool_interceptors=[_AuthInterceptor()],
+        )
         logger.info(
             "Persistent MCP session established — discovered %d tools",
             len(self._tools),
