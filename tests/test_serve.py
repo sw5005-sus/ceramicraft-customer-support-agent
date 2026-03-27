@@ -6,7 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Patch get_tools and build_agent before importing app to avoid real MCP calls
-with patch("ceramicraft_customer_support_agent.mcp_client.get_tools", new_callable=AsyncMock) as _mock_gt:
+with patch(
+    "ceramicraft_customer_support_agent.mcp_client.get_tools",
+    new_callable=AsyncMock,
+) as _mock_gt:
     _mock_gt.return_value = []
     from serve import app, _agent_cache
 

@@ -208,7 +208,10 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
                 "messages": [
                     {
                         "role": "assistant",
-                        "content": "I apologize, but I encountered an error processing your request. Please try again.",
+                        "content": (
+                            "I apologize, but I encountered an error"
+                            " processing your request. Please try again."
+                        ),
                     }
                 ]
             }
