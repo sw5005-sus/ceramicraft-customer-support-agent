@@ -139,7 +139,7 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 
 ## Phase 2 — 功能模块 ✅
 
-> Intent-routed StateGraph, persistent MCP session with tool caching, domain-specific prompts, guard node.
+> Intent-routed StateGraph, connection-mode MCP client with tool caching, domain-specific prompts, guard node.
 > 96+ tests, 97% coverage.
 
 ### 2.1 商品咨询（PUBLIC，无需 token）
