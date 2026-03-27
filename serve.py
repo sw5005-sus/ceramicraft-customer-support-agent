@@ -1,10 +1,23 @@
-"""Entrypoint for the Customer Support Agent."""
+"""HTTP entrypoint for the Customer Support Agent.
+
+Exposes a lightweight FastAPI REST interface instead of MCP, avoiding
+the anyio / asyncio cancel-scope conflict that occurs when LangGraph's
+internal ``asyncio.create_task()`` runs inside FastMCP's anyio context.
+"""
 
 import logging
+from contextlib import asynccontextmanager
+from typing import Any
 
 import dttb
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
-from ceramicraft_customer_support_agent.mcp_server import create_mcp_server
+from ceramicraft_customer_support_agent.agent import build_agent
+from ceramicraft_customer_support_agent.config import get_settings
+from ceramicraft_customer_support_agent.mcp_client import get_tools
 
 # Apply dttb tracebacks for timestamps on exceptions
 dttb.apply()
@@ -15,12 +28,130 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Cache: once tools are discovered and the graph is compiled, reuse it.
+_agent_cache: dict[str, Any] = {}
+
+
+def _extract_bearer_token(request: Request) -> str | None:
+    """Extract Bearer token from the HTTP Authorization header."""
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        return auth[7:]
+    return None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):  # noqa: ARG001
+    """Pre-warm: discover MCP tools and build the agent on startup."""
+    try:
+        tools = await get_tools()
+        _agent_cache["agent"] = build_agent(tools)
+        logger.info("Agent pre-warmed with %d tools", len(tools))
+    except Exception:
+        logger.exception("Failed to pre-warm agent (will retry on first request)")
+    yield
+
+
+app = FastAPI(
+    title="CeramiCraft Customer Support Agent",
+    lifespan=lifespan,
+)
+
+
+# ---------- request / response models ----------
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(..., description="The user's message or question.")
+    thread_id: str = Field(
+        default="default",
+        description="Conversation thread identifier for multi-turn context.",
+    )
+
+
+class ChatResponse(BaseModel):
+    reply: str
+
+
+class ResetResponse(BaseModel):
+    status: str
+    message: str
+
+
+# ---------- endpoints ----------
+
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat(body: ChatRequest, request: Request):
+    """Chat with the CeramiCraft customer support agent."""
+    token = _extract_bearer_token(request)
+
+    try:
+        # Build on first request if lifespan pre-warm failed
+        if "agent" not in _agent_cache:
+            tools = await get_tools()
+            _agent_cache["agent"] = build_agent(tools)
+
+        agent = _agent_cache["agent"]
+
+        initial_state = {
+            "messages": [{"role": "user", "content": body.message}],
+            "auth_token": token,
+            "needs_confirm": False,
+            "confirmed": False,
+        }
+
+        response = await agent.ainvoke(
+            initial_state,
+            config={"configurable": {"thread_id": body.thread_id}},
+        )
+    except Exception:
+        logger.exception("Agent invocation failed")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "reply": "Sorry, something went wrong processing your request. Please try again."
+            },
+        )
+
+    # Extract the last assistant message
+    messages = response.get("messages", [])
+    for msg in reversed(messages):
+        if hasattr(msg, "type") and msg.type == "ai" and msg.content:
+            return ChatResponse(reply=msg.content)
+        if (
+            isinstance(msg, dict)
+            and msg.get("role") == "assistant"
+            and msg.get("content")
+        ):
+            return ChatResponse(reply=msg["content"])
+
+    return ChatResponse(reply="I'm sorry, I couldn't process your request.")
+
+
+@app.post("/reset", response_model=ResetResponse)
+async def reset(thread_id: str = "default"):
+    """Reset the conversation history for a given thread."""
+    return ResetResponse(
+        status="ok",
+        message=f"Conversation '{thread_id}' reset. Use a new thread_id to start fresh.",
+    )
+
 
 def main() -> None:
-    """Initialize and start the Customer Support Agent."""
-    logger.info("Starting Customer Support Agent...")
-    mcp = create_mcp_server()
-    mcp.run(transport="streamable-http")
+    """Start the Customer Support Agent HTTP server."""
+    settings = get_settings()
+    logger.info("Starting Customer Support Agent (REST)...")
+    uvicorn.run(
+        app,
+        host=settings.AGENT_HOST,
+        port=settings.AGENT_PORT,
+    )
 
 
 if __name__ == "__main__":
