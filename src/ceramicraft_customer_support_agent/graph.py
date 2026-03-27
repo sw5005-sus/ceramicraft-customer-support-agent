@@ -198,7 +198,7 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
             # add_messages in the parent graph doesn't duplicate history.
             new_messages = result.get("messages", [])
             if len(new_messages) > len(messages):
-                new_messages = new_messages[len(messages):]
+                new_messages = new_messages[len(messages) :]
 
             return {"messages": new_messages}
 
@@ -208,10 +208,7 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
                 "messages": [
                     {
                         "role": "assistant",
-                        "content": (
-                            "I apologize, but I encountered an error"
-                            " processing your request. Please try again."
-                        ),
+                        "content": "I apologize, but I encountered an error processing your request. Please try again.",
                     }
                 ]
             }
