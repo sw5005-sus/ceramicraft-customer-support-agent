@@ -9,14 +9,14 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 ```
                        ┌────────────────────────────────────────────────────────┐
                        │   Customer Support Agent (LangGraph StateGraph)        │
-  User / Orchestrator  │                                                         │
-  ───MCP (chat)──────▶ │  FastMCP Server                                        │
+  User / Frontend      │                                                         │
+  ─── POST /chat ───▶  │  FastAPI REST                                          │
                        │    │                                                    │
                        │    ├─ extract Bearer token                              │
-                       │    ├─ MCP Client (per-request)                         │
-                       │    │   └─ forward token ──────────────────────────────┼──▶ CeramiCraft MCP Server
-                       │    ├─ discover tools                                   │         │
-                       │    ├─ build graph agent                                │    HTTP (internal)
+                       │    ├─ PersistentMCPClient (long-lived session)         │
+                       │    │   └─ tool handles bound to session ──────────────┼──▶ CeramiCraft MCP Server
+                       │    ├─ discover tools (on startup, cached)              │         │
+                       │    ├─ build graph agent (once, cached)                 │    HTTP (internal)
                        │    │   │                                               │         │
                        │    │   └─ User Message → Classifier → Router ────────┐│         ▼
                        │    │                         │                        ││   Backend Services
@@ -38,7 +38,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
                        │    │                  │  Node   │                    ││
                        │    │                  └─────────┘                    ││
                        │    │                        │                        ││
-                       │    └─ invoke (shared memory)│                        ││
+                       │    └─ invoke (shared MemorySaver)                    ││
                        │                             ▼                        │
                        │                       Response                       │
                        └────────────────────────────────────────────────────────┘
@@ -46,10 +46,10 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 
 ### Graph Flow
 
-1. **User Message** enters the system via MCP chat tool
+1. **User Message** enters via `POST /chat` with optional Bearer token and thread_id
 2. **Classifier** analyzes intent using LLM (no tools): `browse`, `cart`, `order`, `review`, `account`, `chitchat`, `escalate`
 3. **Router** sends to appropriate domain subgraph based on intent
-4. **Domain Subgraphs** (ReAct agents with filtered tools):
+4. **Domain Subgraphs** (stateless ReAct agents with filtered tools):
    - **Browse**: search_products, get_product, list_product_reviews
    - **Cart**: get_cart, add_to_cart, update_cart_item, remove_cart_item, estimate_cart_price, search_products
    - **Order**: list_my_orders, get_order_detail, confirm_receipt, get_order_stats, create_order
@@ -70,9 +70,18 @@ class AgentState(TypedDict):
     confirmed: bool                          # User has confirmed action
 ```
 
-Each request creates a fresh MCP session with the user's auth token,
-discovers available tools, and invokes the LangGraph StateGraph. Conversation
-history is preserved across requests via a shared `MemorySaver`.
+Conversation history is preserved across requests via a shared `MemorySaver`
+keyed by `thread_id`. The MCP client session is persistent (process lifetime)
+to keep tool handles valid.
+
+## REST API
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/chat` | POST | Send a message to the agent. Body: `{"message": "...", "thread_id": "..."}` |
+| `/reset` | POST | Reset conversation. Query: `?thread_id=...` |
+| `/health` | GET | Liveness probe |
+| `/docs` | GET | Swagger UI (auto-generated) |
 
 ## Available Tools (via MCP)
 
@@ -83,13 +92,6 @@ history is preserved across requests via a shared `MemorySaver`.
 | Order | list_my_orders, get_order_detail, confirm_receipt, get_order_stats, create_order | USER |
 | Review | list_product_reviews, get_user_reviews, create_review, like_review | PUBLIC / USER |
 | User | get_my_profile, update_my_profile, list_my_addresses, create_address, update_address, delete_address | USER |
-
-## MCP Tools Exposed
-
-| Tool | Description |
-|------|-------------|
-| `chat` | Send a message to the customer support agent |
-| `reset` | Reset conversation history for a thread |
 
 ## Development
 

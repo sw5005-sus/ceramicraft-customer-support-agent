@@ -28,11 +28,10 @@ def test_build_browse_subgraph(mock_create_react, mock_llm_cls):
         tool.name = name
         mock_tools.append(tool)
 
-    mock_memory = MagicMock()
     mock_agent = MagicMock()
     mock_create_react.return_value = mock_agent
 
-    result = build_browse_subgraph(mock_tools, mock_memory)
+    result = build_browse_subgraph(mock_tools)
 
     # Check that correct tools were filtered
     call_args = mock_create_react.call_args
@@ -42,8 +41,9 @@ def test_build_browse_subgraph(mock_create_react, mock_llm_cls):
     expected_tools = {"search_products", "get_product", "list_product_reviews"}
     assert tool_names == expected_tools
 
-    # Check other arguments
-    assert call_args.kwargs["checkpointer"] is mock_memory
+    # Subgraphs should NOT have a checkpointer (stateless per-invocation)
+    assert "checkpointer" not in call_args.kwargs
+
     assert "prompt" in call_args.kwargs
 
     mock_llm_cls.assert_called_once()
@@ -62,11 +62,10 @@ def test_build_cart_subgraph(mock_create_react, mock_llm_cls):
         tool.name = name
         mock_tools.append(tool)
 
-    mock_memory = MagicMock()
     mock_agent = MagicMock()
     mock_create_react.return_value = mock_agent
 
-    result = build_cart_subgraph(mock_tools, mock_memory)
+    result = build_cart_subgraph(mock_tools)
 
     call_args = mock_create_react.call_args
     tools_arg = call_args.kwargs["tools"]
@@ -74,6 +73,7 @@ def test_build_cart_subgraph(mock_create_react, mock_llm_cls):
 
     expected_tools = {"get_cart", "add_to_cart", "search_products"}
     assert tool_names.issubset(expected_tools)
+    assert "checkpointer" not in call_args.kwargs
     assert result is mock_agent
 
 
@@ -93,11 +93,10 @@ def test_build_order_subgraph(mock_create_react, mock_llm_cls):
         tool.name = name
         mock_tools.append(tool)
 
-    mock_memory = MagicMock()
     mock_agent = MagicMock()
     mock_create_react.return_value = mock_agent
 
-    result = build_order_subgraph(mock_tools, mock_memory)
+    result = build_order_subgraph(mock_tools)
 
     call_args = mock_create_react.call_args
     tools_arg = call_args.kwargs["tools"]
@@ -105,6 +104,7 @@ def test_build_order_subgraph(mock_create_react, mock_llm_cls):
 
     expected_tools = {"list_my_orders", "get_order_detail", "create_order"}
     assert tool_names.issubset(expected_tools)
+    assert "checkpointer" not in call_args.kwargs
     assert result is mock_agent
 
 
@@ -119,11 +119,10 @@ def test_build_review_subgraph(mock_create_react, mock_llm_cls):
         tool.name = name
         mock_tools.append(tool)
 
-    mock_memory = MagicMock()
     mock_agent = MagicMock()
     mock_create_react.return_value = mock_agent
 
-    result = build_review_subgraph(mock_tools, mock_memory)
+    result = build_review_subgraph(mock_tools)
 
     call_args = mock_create_react.call_args
     tools_arg = call_args.kwargs["tools"]
@@ -131,6 +130,7 @@ def test_build_review_subgraph(mock_create_react, mock_llm_cls):
 
     expected_tools = {"create_review", "like_review", "get_user_reviews"}
     assert tool_names.issubset(expected_tools)
+    assert "checkpointer" not in call_args.kwargs
     assert result is mock_agent
 
 
@@ -150,11 +150,10 @@ def test_build_account_subgraph(mock_create_react, mock_llm_cls):
         tool.name = name
         mock_tools.append(tool)
 
-    mock_memory = MagicMock()
     mock_agent = MagicMock()
     mock_create_react.return_value = mock_agent
 
-    result = build_account_subgraph(mock_tools, mock_memory)
+    result = build_account_subgraph(mock_tools)
 
     call_args = mock_create_react.call_args
     tools_arg = call_args.kwargs["tools"]
@@ -162,6 +161,7 @@ def test_build_account_subgraph(mock_create_react, mock_llm_cls):
 
     expected_tools = {"get_my_profile", "update_my_profile", "delete_address"}
     assert tool_names.issubset(expected_tools)
+    assert "checkpointer" not in call_args.kwargs
     assert result is mock_agent
 
 
@@ -177,11 +177,10 @@ def test_subgraph_with_empty_tools(mock_create_react, mock_llm_cls):
         tool.name = name
         mock_tools.append(tool)
 
-    mock_memory = MagicMock()
     mock_agent = MagicMock()
     mock_create_react.return_value = mock_agent
 
-    result = build_browse_subgraph(mock_tools, mock_memory)
+    result = build_browse_subgraph(mock_tools)
 
     call_args = mock_create_react.call_args
     tools_arg = call_args.kwargs["tools"]
@@ -196,7 +195,6 @@ def test_subgraph_with_empty_tools(mock_create_react, mock_llm_cls):
 def test_all_subgraphs_use_correct_prompts(mock_create_react, mock_llm_cls):
     """All subgraphs should use their respective domain prompts."""
     mock_tools = []
-    mock_memory = MagicMock()
     mock_agent = MagicMock()
     mock_create_react.return_value = mock_agent
 
@@ -211,7 +209,7 @@ def test_all_subgraphs_use_correct_prompts(mock_create_react, mock_llm_cls):
 
     for subgraph_builder in subgraphs:
         mock_create_react.reset_mock()
-        subgraph_builder(mock_tools, mock_memory)
+        subgraph_builder(mock_tools)
 
         call_args = mock_create_react.call_args
         assert "prompt" in call_args.kwargs

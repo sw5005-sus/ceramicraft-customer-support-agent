@@ -1,4 +1,10 @@
-"""Tests for the MCP server module."""
+"""Tests for the MCP server module.
+
+Note: As of 2026-03-27 the production entrypoint (serve.py) uses FastAPI
+instead of FastMCP due to anyio/asyncio cancel-scope conflicts.  These
+tests cover the **legacy** mcp_server.py module which is kept for backward
+compatibility and potential future MCP-only deployments.
+"""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -83,19 +89,11 @@ def test_extract_bearer_token_empty_extra_dict():
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
-@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
-@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
-async def test_chat_returns_agent_reply(mock_session, mock_discover, mock_build):
+@patch("ceramicraft_customer_support_agent.mcp_server.get_tools")
+async def test_chat_returns_agent_reply(mock_get_tools, mock_build):
     """chat tool should return the agent's AI reply."""
-    # Mock MCP session
-    mock_sess = AsyncMock()
-    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
-    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
+    mock_get_tools.return_value = [MagicMock()]
 
-    # Mock tools
-    mock_discover.return_value = [MagicMock()]
-
-    # Mock agent response
     ai_msg = MagicMock()
     ai_msg.type = "ai"
     ai_msg.content = "Here are some ceramic cups!"
@@ -112,28 +110,20 @@ async def test_chat_returns_agent_reply(mock_session, mock_discover, mock_build)
     result = await chat_fn(ctx=ctx, message="find cups", thread_id="t1")
 
     assert result == {"reply": "Here are some ceramic cups!"}
-    mock_session.assert_called_once_with(token="test_token")
 
     # Verify the agent was called with the new state format
     call_args = mock_agent.ainvoke.call_args
     state = call_args[0][0]
     assert "messages" in state
     assert "auth_token" in state
-    assert "needs_confirm" in state
-    assert "confirmed" in state
     assert state["auth_token"] == "test_token"
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
-@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
-@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
-async def test_chat_without_token(mock_session, mock_discover, mock_build):
+@patch("ceramicraft_customer_support_agent.mcp_server.get_tools")
+async def test_chat_without_token(mock_get_tools, mock_build):
     """chat tool should work without auth token (PUBLIC tools)."""
-    mock_sess = AsyncMock()
-    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
-    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    mock_discover.return_value = [MagicMock()]
+    mock_get_tools.return_value = [MagicMock()]
 
     ai_msg = MagicMock()
     ai_msg.type = "ai"
@@ -150,24 +140,16 @@ async def test_chat_without_token(mock_session, mock_discover, mock_build):
     result = await chat_fn(ctx=ctx, message="what products?", thread_id="t1")
 
     assert result == {"reply": "We have vases and cups."}
-    mock_session.assert_called_once_with(token=None)
-
-    # Verify auth_token is None in state
     call_args = mock_agent.ainvoke.call_args
     state = call_args[0][0]
     assert state["auth_token"] is None
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
-@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
-@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
-async def test_chat_skips_non_ai_messages(mock_session, mock_discover, mock_build):
+@patch("ceramicraft_customer_support_agent.mcp_server.get_tools")
+async def test_chat_skips_non_ai_messages(mock_get_tools, mock_build):
     """chat should skip tool messages and return the AI one."""
-    mock_sess = AsyncMock()
-    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
-    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    mock_discover.return_value = []
+    mock_get_tools.return_value = []
 
     tool_msg = MagicMock()
     tool_msg.type = "tool"
@@ -190,15 +172,10 @@ async def test_chat_skips_non_ai_messages(mock_session, mock_discover, mock_buil
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
-@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
-@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
-async def test_chat_handles_dict_messages(mock_session, mock_discover, mock_build):
+@patch("ceramicraft_customer_support_agent.mcp_server.get_tools")
+async def test_chat_handles_dict_messages(mock_get_tools, mock_build):
     """chat should handle dict format messages from the new graph."""
-    mock_sess = AsyncMock()
-    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
-    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    mock_discover.return_value = []
+    mock_get_tools.return_value = []
 
     mock_agent = AsyncMock()
     mock_agent.ainvoke.return_value = {
@@ -215,17 +192,10 @@ async def test_chat_handles_dict_messages(mock_session, mock_discover, mock_buil
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
-@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
-@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
-async def test_chat_fallback_when_no_ai_content(
-    mock_session, mock_discover, mock_build
-):
+@patch("ceramicraft_customer_support_agent.mcp_server.get_tools")
+async def test_chat_fallback_when_no_ai_content(mock_get_tools, mock_build):
     """chat should return fallback when AI message has empty content."""
-    mock_sess = AsyncMock()
-    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
-    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    mock_discover.return_value = []
+    mock_get_tools.return_value = []
 
     empty_msg = MagicMock()
     empty_msg.type = "ai"
@@ -243,11 +213,10 @@ async def test_chat_fallback_when_no_ai_content(
     assert result == {"reply": "I'm sorry, I couldn't process your request."}
 
 
-@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
-async def test_chat_raises_tool_error_on_exception(mock_session):
+@patch("ceramicraft_customer_support_agent.mcp_server.get_tools")
+async def test_chat_raises_tool_error_on_exception(mock_get_tools):
     """chat should raise ToolError when agent invocation fails."""
-    mock_session.return_value.__aenter__ = AsyncMock(side_effect=RuntimeError("boom"))
-    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
+    mock_get_tools.side_effect = RuntimeError("boom")
 
     mcp = mcp_server.create_mcp_server()
     chat_fn = mcp._tool_manager._tools["chat"].fn
@@ -258,17 +227,10 @@ async def test_chat_raises_tool_error_on_exception(mock_session):
 
 
 @patch("ceramicraft_customer_support_agent.mcp_server.build_agent")
-@patch("ceramicraft_customer_support_agent.mcp_server.discover_tools")
-@patch("ceramicraft_customer_support_agent.mcp_server.mcp_session")
-async def test_chat_initializes_state_correctly(
-    mock_session, mock_discover, mock_build
-):
+@patch("ceramicraft_customer_support_agent.mcp_server.get_tools")
+async def test_chat_initializes_state_correctly(mock_get_tools, mock_build):
     """chat should initialize state with correct default values."""
-    mock_sess = AsyncMock()
-    mock_session.return_value.__aenter__ = AsyncMock(return_value=mock_sess)
-    mock_session.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    mock_discover.return_value = []
+    mock_get_tools.return_value = []
 
     mock_agent = AsyncMock()
     mock_agent.ainvoke.return_value = {
