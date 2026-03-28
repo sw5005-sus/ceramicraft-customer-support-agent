@@ -6,6 +6,7 @@ internal ``asyncio.create_task()`` runs inside FastMCP's anyio context.
 """
 
 import logging
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -63,14 +64,18 @@ app = FastAPI(
 
 class ChatRequest(BaseModel):
     message: str = Field(..., description="The user's message or question.")
-    thread_id: str = Field(
-        ...,
-        description="Conversation thread identifier for multi-turn context.",
+    thread_id: str | None = Field(
+        default=None,
+        description="Conversation thread ID. Omit to start a new conversation; "
+        "include the returned thread_id to continue an existing one.",
     )
 
 
 class ChatResponse(BaseModel):
     reply: str
+    thread_id: str = Field(
+        ..., description="Thread ID for this conversation. Pass it back to continue."
+    )
 
 
 class ResetResponse(BaseModel):
@@ -90,6 +95,7 @@ async def health_check():
 async def chat(body: ChatRequest, request: Request):
     """Chat with the CeramiCraft customer support agent."""
     token = _extract_bearer_token(request)
+    thread_id = body.thread_id or uuid.uuid4().hex
 
     try:
         # Build on first request if lifespan pre-warm failed
@@ -111,14 +117,15 @@ async def chat(body: ChatRequest, request: Request):
 
         response = await agent.ainvoke(
             initial_state,
-            config={"configurable": {"thread_id": body.thread_id}},
+            config={"configurable": {"thread_id": thread_id}},
         )
     except Exception:
         logger.exception("Agent invocation failed")
         return JSONResponse(
             status_code=500,
             content={
-                "reply": "Sorry, something went wrong processing your request. Please try again."
+                "reply": "Sorry, something went wrong processing your request. Please try again.",
+                "thread_id": thread_id,
             },
         )
 
@@ -126,15 +133,17 @@ async def chat(body: ChatRequest, request: Request):
     messages = response.get("messages", [])
     for msg in reversed(messages):
         if hasattr(msg, "type") and msg.type == "ai" and msg.content:
-            return ChatResponse(reply=msg.content)
+            return ChatResponse(reply=msg.content, thread_id=thread_id)
         if (
             isinstance(msg, dict)
             and msg.get("role") == "assistant"
             and msg.get("content")
         ):
-            return ChatResponse(reply=msg["content"])
+            return ChatResponse(reply=msg["content"], thread_id=thread_id)
 
-    return ChatResponse(reply="I'm sorry, I couldn't process your request.")
+    return ChatResponse(
+        reply="I'm sorry, I couldn't process your request.", thread_id=thread_id
+    )
 
 
 @app.post("/reset", response_model=ResetResponse)

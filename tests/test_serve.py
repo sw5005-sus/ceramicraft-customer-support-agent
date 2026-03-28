@@ -37,8 +37,8 @@ def test_health_check(client):
 
 @patch("serve.build_agent")
 @patch("serve.get_tools")
-def test_chat_returns_reply(mock_get_tools, mock_build, client):
-    """POST /chat should return the agent's reply."""
+def test_chat_returns_reply_with_thread_id(mock_get_tools, mock_build, client):
+    """POST /chat should return the agent's reply and a thread_id."""
     mock_get_tools.return_value = []
 
     ai_msg = MagicMock()
@@ -52,7 +52,55 @@ def test_chat_returns_reply(mock_get_tools, mock_build, client):
     resp = client.post("/chat", json={"message": "hi", "thread_id": "t1"})
 
     assert resp.status_code == 200
-    assert resp.json() == {"reply": "Hello! How can I help?"}
+    data = resp.json()
+    assert data["reply"] == "Hello! How can I help?"
+    assert data["thread_id"] == "t1"
+
+
+@patch("serve.build_agent")
+@patch("serve.get_tools")
+def test_chat_generates_thread_id_when_omitted(mock_get_tools, mock_build, client):
+    """POST /chat without thread_id should auto-generate one."""
+    mock_get_tools.return_value = []
+
+    ai_msg = MagicMock()
+    ai_msg.type = "ai"
+    ai_msg.content = "Hello!"
+
+    mock_agent = AsyncMock()
+    mock_agent.ainvoke.return_value = {"messages": [ai_msg]}
+    mock_build.return_value = mock_agent
+
+    resp = client.post("/chat", json={"message": "hi"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["reply"] == "Hello!"
+    assert len(data["thread_id"]) == 32  # uuid4 hex
+
+
+@patch("serve.build_agent")
+@patch("serve.get_tools")
+def test_chat_preserves_explicit_thread_id(mock_get_tools, mock_build, client):
+    """POST /chat with explicit thread_id should use it, not generate."""
+    mock_get_tools.return_value = []
+
+    ai_msg = MagicMock()
+    ai_msg.type = "ai"
+    ai_msg.content = "ok"
+
+    mock_agent = AsyncMock()
+    mock_agent.ainvoke.return_value = {"messages": [ai_msg]}
+    mock_build.return_value = mock_agent
+
+    resp = client.post("/chat", json={"message": "hi", "thread_id": "my-thread-42"})
+
+    assert resp.status_code == 200
+    assert resp.json()["thread_id"] == "my-thread-42"
+
+    # Verify the agent was called with the explicit thread_id
+    call_config = mock_agent.ainvoke.call_args[1]["config"]
+    assert call_config["configurable"]["thread_id"] == "my-thread-42"
 
 
 @patch("serve.build_agent")
@@ -96,7 +144,7 @@ def test_chat_without_token(mock_get_tools, mock_build, client):
     mock_agent.ainvoke.return_value = {"messages": [ai_msg]}
     mock_build.return_value = mock_agent
 
-    resp = client.post("/chat", json={"message": "hi", "thread_id": "t-notoken"})
+    resp = client.post("/chat", json={"message": "hi"})
 
     assert resp.status_code == 200
 
@@ -117,10 +165,12 @@ def test_chat_handles_dict_messages(mock_get_tools, mock_build, client):
     }
     mock_build.return_value = mock_agent
 
-    resp = client.post("/chat", json={"message": "test", "thread_id": "t-dict"})
+    resp = client.post("/chat", json={"message": "test"})
 
     assert resp.status_code == 200
-    assert resp.json() == {"reply": "dict response"}
+    data = resp.json()
+    assert data["reply"] == "dict response"
+    assert data["thread_id"]  # auto-generated
 
 
 @patch("serve.build_agent")
@@ -137,21 +187,36 @@ def test_chat_fallback_on_empty_content(mock_get_tools, mock_build, client):
     mock_agent.ainvoke.return_value = {"messages": [empty_msg]}
     mock_build.return_value = mock_agent
 
-    resp = client.post("/chat", json={"message": "hi", "thread_id": "t-empty"})
+    resp = client.post("/chat", json={"message": "hi"})
 
     assert resp.status_code == 200
-    assert "couldn't process" in resp.json()["reply"]
+    data = resp.json()
+    assert "couldn't process" in data["reply"]
+    assert data["thread_id"]  # still returned
 
 
 @patch("serve.get_tools")
 def test_chat_returns_500_on_exception(mock_get_tools, client):
-    """POST /chat should return 500 on agent failure."""
+    """POST /chat should return 500 on agent failure with thread_id."""
     mock_get_tools.side_effect = RuntimeError("boom")
 
-    resp = client.post("/chat", json={"message": "hi", "thread_id": "t-err"})
+    resp = client.post("/chat", json={"message": "hi"})
 
     assert resp.status_code == 500
-    assert "went wrong" in resp.json()["reply"]
+    data = resp.json()
+    assert "went wrong" in data["reply"]
+    assert data["thread_id"]  # still returned even on error
+
+
+@patch("serve.get_tools")
+def test_chat_500_preserves_explicit_thread_id(mock_get_tools, client):
+    """POST /chat 500 should preserve the caller's thread_id."""
+    mock_get_tools.side_effect = RuntimeError("boom")
+
+    resp = client.post("/chat", json={"message": "hi", "thread_id": "err-thread"})
+
+    assert resp.status_code == 500
+    assert resp.json()["thread_id"] == "err-thread"
 
 
 def test_reset_returns_ok(client):
@@ -171,11 +236,14 @@ def test_chat_requires_message(client):
     assert resp.status_code == 422  # Validation error
 
 
-def test_chat_requires_thread_id(client):
-    """POST /chat should reject request without thread_id."""
+def test_chat_accepts_without_thread_id(client):
+    """POST /chat should accept request without thread_id (auto-generated)."""
+    # This just validates the request model accepts it; agent will fail
+    # without mock but the 422 should NOT happen.
     resp = client.post("/chat", json={"message": "hi"})
 
-    assert resp.status_code == 422  # Validation error
+    # Could be 200 or 500 depending on agent availability, but NOT 422
+    assert resp.status_code != 422
 
 
 def test_reset_requires_thread_id(client):
@@ -202,7 +270,7 @@ def test_chat_sets_auth_context(mock_get_tools, mock_build, mock_set_token, clie
 
     resp = client.post(
         "/chat",
-        json={"message": "hi", "thread_id": "t-ctx"},
+        json={"message": "hi"},
         headers={"Authorization": "Bearer ctx_token_123"},
     )
 

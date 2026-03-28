@@ -61,7 +61,7 @@ MCP Client 使用 **connection 模式**（`session=None, connection=StreamableHt
 
 ### 对话隔离
 
-通过 `thread_id` 隔离多用户对话。每个用户独立的对话历史和上下文，`thread_id` 来源于用户标识。共享的 `MemorySaver` 在进程内跨请求持久化。
+通过 `thread_id` 隔离多用户对话。每个用户独立的对话历史和上下文。`thread_id` 可选——首次调用不传时服务端自动生成（`uuid4().hex`），response 中始终返回 `thread_id`，后续调用传回即可继续。共享的 `MemorySaver` 在进程内跨请求持久化。
 
 ### Token 透传链路
 
@@ -124,7 +124,7 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - `_sanitize_messages()` 过滤 classifier 产生的 orphaned tool_calls
 
 ### 1.4 REST API（对外暴露）
-- `POST /chat`：接收用户消息 + thread_id，返回 agent 回复
+- `POST /chat`：接收用户消息 + 可选 thread_id，返回 agent 回复 + thread_id
 - `POST /reset`：重置对话历史（API 兼容，待持久化后实现）
 - `GET /health`：健康检查
 - `GET /docs`：Swagger UI（自动生成）
@@ -241,6 +241,6 @@ ceramicraft-customer-support-agent/
 - [ ] register_push_token（通知）— 优先级低
 - [ ] PostgreSQL checkpoint 持久化
 - [x] ~~Token 端到端透传到下游 MCP Server~~ — 已完成（ContextVar + _AuthInterceptor）
-- [x] ~~thread_id 改为必传参数~~ — 已完成
+- [x] ~~thread_id 改为可选，服务端自动生成，response 返回~~ — 已完成
 - [x] ~~子图拆分（按意图路由）~~ — 已完成
 - [x] ~~FastMCP → FastAPI~~ — 已完成（anyio/asyncio 冲突）

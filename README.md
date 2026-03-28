@@ -46,7 +46,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 
 ### Graph Flow
 
-1. **User Message** enters via `POST /chat` with optional Bearer token and thread_id
+1. **User Message** enters via `POST /chat` with optional Bearer token and optional thread_id
 2. **Classifier** analyzes intent using LLM (no tools): `browse`, `cart`, `order`, `review`, `account`, `chitchat`, `escalate`
 3. **Router** sends to appropriate domain subgraph based on intent
 4. **Domain Subgraphs** (stateless ReAct agents with filtered tools):
@@ -78,7 +78,7 @@ to keep tool handles valid.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/chat` | POST | Send a message to the agent. Body: `{"message": "...", "thread_id": "..."}` |
+| `/chat` | POST | Send a message. Body: `{"message": "...", "thread_id": "..."}`. `thread_id` is optional — omit to start a new conversation; the response always includes `thread_id` to continue. |
 | `/reset` | POST | Reset conversation. Query: `?thread_id=...` |
 | `/health` | GET | Liveness probe |
 | `/docs` | GET | Swagger UI (auto-generated) |
