@@ -13,7 +13,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
   ─── POST /chat ───▶  │  FastAPI REST                                          │
                        │    │                                                    │
                        │    ├─ extract Bearer token                              │
-                       │    ├─ PersistentMCPClient (long-lived session)         │
+                       │    ├─ PersistentMCPClient (connection mode, per-call sessions) │
                        │    │   └─ tool handles bound to session ──────────────┼──▶ CeramiCraft MCP Server
                        │    ├─ discover tools (on startup, cached)              │         │
                        │    ├─ build graph agent (once, cached)                 │    HTTP (internal)
@@ -38,7 +38,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
                        │    │                  │  Node   │                    ││
                        │    │                  └─────────┘                    ││
                        │    │                        │                        ││
-                       │    └─ invoke (shared MemorySaver)                    ││
+                       │    └─ invoke (MemorySaver — checkpointer)             ││
                        │                             ▼                        │
                        │                       Response                       │
                        └────────────────────────────────────────────────────────┘
@@ -124,3 +124,5 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 | `AGENT_PORT` | Agent server port | `8080` |
 | `LANGSMITH_API_KEY` | LangSmith tracing key | *(optional)* |
 | `LANGSMITH_PROJECT` | LangSmith project name | `ceramicraft-cs-agent` |
+| `MLFLOW_TRACKING_URI` | MLflow tracking server URL | *(optional)* |
+| `MLFLOW_EXPERIMENT_NAME` | MLflow experiment name | `ceramicraft-cs-agent` |

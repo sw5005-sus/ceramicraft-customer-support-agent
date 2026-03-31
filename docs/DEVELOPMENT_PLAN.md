@@ -1,6 +1,6 @@
 # Customer Support Agent — 开发计划
 
-_最后更新：2026-03-27_
+_最后更新：2026-03-31_
 
 ---
 
@@ -16,6 +16,7 @@ _最后更新：2026-03-27_
 | LLM | OpenAI GPT-4o |
 | 设计原则 | Prompt Engineering + Context Engineering + 渐进式披露 |
 | MCP Client | PersistentMCPClient 单例（connection 模式），工具列表缓存，每次调用建临时 session |
+| 可观测性 | MLflow tracing（autolog）+ Prompt Registry，graceful degradation |
 
 ---
 
@@ -198,6 +199,12 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - 将 auth_token 从 AgentState 注入到每次 MCP tool 调用的 headers 中
 - 或在 PersistentMCPClient 中支持 per-request token forwarding
 
+### 3.6 MLflow Integration ✅
+- MLflow tracing via `mlflow.langchain.autolog()` — auto-captures full LangGraph execution traces
+- Prompt Registry integration — prompts loadable from MLflow with local fallback
+- `scripts/prompt_register.py` for batch prompt registration
+- Graceful degradation — app works without MLflow installed/configured
+
 ---
 
 ## 项目结构
@@ -215,6 +222,7 @@ ceramicraft-customer-support-agent/
 │   ├── nodes.py                      # 轻量节点（chitchat + escalate，无工具）
 │   ├── subgraphs.py                  # 领域子图（5 个 stateless ReAct agent builder）
 │   ├── mcp_client.py                 # MCP Client（PersistentMCPClient 单例，connection 模式 + auth interceptor）
+│   ├── mlflow_utils.py               # MLflow tracing initialization (graceful degradation)
 │   └── prompts.py                    # System prompt 模板（主 + 6 个领域）
 ├── tests/
 │   ├── conftest.py
@@ -228,6 +236,8 @@ ceramicraft-customer-support-agent/
 │   ├── test_prompts.py
 │   ├── test_serve.py                 # FastAPI 端点测试（新增）
 │   └── test_subgraphs.py
+├── scripts/
+│   └── prompt_register.py            # Register prompts to MLflow Prompt Registry
 ├── Dockerfile
 ├── docker-compose.yml
 └── pyproject.toml
@@ -244,3 +254,4 @@ ceramicraft-customer-support-agent/
 - [x] ~~thread_id 改为可选，服务端自动生成，response 返回~~ — 已完成
 - [x] ~~子图拆分（按意图路由）~~ — 已完成
 - [x] ~~FastMCP → FastAPI~~ — 已完成（anyio/asyncio 冲突）
+- [x] ~~MLflow tracing + Prompt Registry~~ — 已完成
