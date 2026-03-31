@@ -22,13 +22,13 @@ from ceramicraft_customer_support_agent.prompts import (
 )
 
 PROMPTS = [
-    ("SYSTEM_PROMPT", SYSTEM_PROMPT, "Main system prompt for the CS agent"),
-    ("BROWSE_PROMPT", BROWSE_PROMPT, "Product browsing specialist prompt"),
-    ("CART_PROMPT", CART_PROMPT, "Shopping cart specialist prompt"),
-    ("ORDER_PROMPT", ORDER_PROMPT, "Order management specialist prompt"),
-    ("REVIEW_PROMPT", REVIEW_PROMPT, "Review specialist prompt"),
-    ("ACCOUNT_PROMPT", ACCOUNT_PROMPT, "Account management specialist prompt"),
-    ("CHITCHAT_PROMPT", CHITCHAT_PROMPT, "Casual conversation prompt"),
+    ("CS_AGENT_SYSTEM_PROMPT", SYSTEM_PROMPT, "Main system prompt for the CS agent"),
+    ("CS_AGENT_BROWSE_PROMPT", BROWSE_PROMPT, "Product browsing specialist prompt"),
+    ("CS_AGENT_CART_PROMPT", CART_PROMPT, "Shopping cart specialist prompt"),
+    ("CS_AGENT_ORDER_PROMPT", ORDER_PROMPT, "Order management specialist prompt"),
+    ("CS_AGENT_REVIEW_PROMPT", REVIEW_PROMPT, "Review specialist prompt"),
+    ("CS_AGENT_ACCOUNT_PROMPT", ACCOUNT_PROMPT, "Account management specialist prompt"),
+    ("CS_AGENT_CHITCHAT_PROMPT", CHITCHAT_PROMPT, "Casual conversation prompt"),
 ]
 
 

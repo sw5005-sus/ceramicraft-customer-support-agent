@@ -180,28 +180,28 @@ def get_prompt(name: str, fallback: str) -> str:
 
 
 def get_system_prompt() -> str:
-    return get_prompt("SYSTEM_PROMPT", SYSTEM_PROMPT)
+    return get_prompt("CS_AGENT_SYSTEM_PROMPT", SYSTEM_PROMPT)
 
 
 def get_browse_prompt() -> str:
-    return get_prompt("BROWSE_PROMPT", BROWSE_PROMPT)
+    return get_prompt("CS_AGENT_BROWSE_PROMPT", BROWSE_PROMPT)
 
 
 def get_cart_prompt() -> str:
-    return get_prompt("CART_PROMPT", CART_PROMPT)
+    return get_prompt("CS_AGENT_CART_PROMPT", CART_PROMPT)
 
 
 def get_order_prompt() -> str:
-    return get_prompt("ORDER_PROMPT", ORDER_PROMPT)
+    return get_prompt("CS_AGENT_ORDER_PROMPT", ORDER_PROMPT)
 
 
 def get_review_prompt() -> str:
-    return get_prompt("REVIEW_PROMPT", REVIEW_PROMPT)
+    return get_prompt("CS_AGENT_REVIEW_PROMPT", REVIEW_PROMPT)
 
 
 def get_account_prompt() -> str:
-    return get_prompt("ACCOUNT_PROMPT", ACCOUNT_PROMPT)
+    return get_prompt("CS_AGENT_ACCOUNT_PROMPT", ACCOUNT_PROMPT)
 
 
 def get_chitchat_prompt() -> str:
-    return get_prompt("CHITCHAT_PROMPT", CHITCHAT_PROMPT)
+    return get_prompt("CS_AGENT_CHITCHAT_PROMPT", CHITCHAT_PROMPT)
