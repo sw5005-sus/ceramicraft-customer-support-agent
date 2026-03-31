@@ -8,6 +8,14 @@ from ceramicraft_customer_support_agent.prompts import (
     REVIEW_PROMPT,
     ACCOUNT_PROMPT,
     CHITCHAT_PROMPT,
+    get_prompt,
+    get_system_prompt,
+    get_browse_prompt,
+    get_cart_prompt,
+    get_order_prompt,
+    get_review_prompt,
+    get_account_prompt,
+    get_chitchat_prompt,
 )
 
 
@@ -202,3 +210,94 @@ def test_prompts_are_comprehensive():
         # Should be substantial (more than just a title)
         assert len(prompt) > 100
         assert len(prompt.split()) > 20
+
+
+# ---------------------------------------------------------------------------
+# Tests for get_prompt() and convenience functions
+# ---------------------------------------------------------------------------
+
+
+def _clear_prompt_cache():
+    """Clear the module-level prompt cache between tests."""
+    import ceramicraft_customer_support_agent.prompts as p
+
+    p._prompt_cache.clear()
+
+
+def test_get_prompt_fallback_no_mlflow_uri(monkeypatch):
+    """get_prompt should return fallback when MLFLOW_TRACKING_URI is not set."""
+    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
+    _clear_prompt_cache()
+
+    result = get_prompt("SYSTEM_PROMPT", "my fallback")
+    assert result == "my fallback"
+
+
+def test_get_prompt_fallback_on_import_error(monkeypatch):
+    """get_prompt should return fallback when mlflow is not importable."""
+    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    _clear_prompt_cache()
+
+    import builtins
+
+    real_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == "mlflow":
+            raise ImportError("mlflow not installed")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", mock_import)
+    result = get_prompt("SYSTEM_PROMPT", "fallback text")
+    assert result == "fallback text"
+
+
+def test_get_prompt_cached(monkeypatch):
+    """get_prompt should use cache on second call."""
+    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
+    _clear_prompt_cache()
+
+    import ceramicraft_customer_support_agent.prompts as p
+
+    # Pre-populate cache
+    p._prompt_cache["MY_PROMPT"] = "cached value"
+    result = get_prompt("MY_PROMPT", "should not be returned")
+    assert result == "cached value"
+
+
+def test_existing_constants_unchanged():
+    """Existing module-level constants must remain unchanged."""
+    assert SYSTEM_PROMPT is not None
+    assert BROWSE_PROMPT is not None
+    assert CART_PROMPT is not None
+    assert ORDER_PROMPT is not None
+    assert REVIEW_PROMPT is not None
+    assert ACCOUNT_PROMPT is not None
+    assert CHITCHAT_PROMPT is not None
+    # Ensure they're still the same strings
+    assert "CeramiCraft" in SYSTEM_PROMPT
+    assert "CeramiCraft" in BROWSE_PROMPT
+
+
+def test_convenience_functions_return_strings(monkeypatch):
+    """Convenience get_*_prompt() functions should return non-empty strings."""
+    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
+    _clear_prompt_cache()
+
+    assert isinstance(get_system_prompt(), str)
+    assert isinstance(get_browse_prompt(), str)
+    assert isinstance(get_cart_prompt(), str)
+    assert isinstance(get_order_prompt(), str)
+    assert isinstance(get_review_prompt(), str)
+    assert isinstance(get_account_prompt(), str)
+    assert isinstance(get_chitchat_prompt(), str)
+
+
+def test_convenience_functions_return_fallbacks_without_mlflow(monkeypatch):
+    """Without MLflow URI, convenience functions should return hardcoded prompts."""
+    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
+    _clear_prompt_cache()
+
+    assert get_system_prompt() == SYSTEM_PROMPT
+    _clear_prompt_cache()
+    assert get_browse_prompt() == BROWSE_PROMPT

@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 from ceramicraft_customer_support_agent.agent import build_agent
 from ceramicraft_customer_support_agent.config import get_settings
 from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token
+from ceramicraft_customer_support_agent.mlflow_utils import init_mlflow_tracing
 
 # Apply dttb tracebacks for timestamps on exceptions
 dttb.apply()
@@ -44,6 +45,7 @@ def _extract_bearer_token(request: Request) -> str | None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
     """Pre-warm: discover MCP tools and build the agent on startup."""
+    init_mlflow_tracing()
     try:
         tools = await get_tools()
         _agent_cache["agent"] = build_agent(tools)

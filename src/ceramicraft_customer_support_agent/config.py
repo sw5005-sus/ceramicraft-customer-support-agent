@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     LANGSMITH_API_KEY: str = ""
     LANGSMITH_PROJECT: str = "ceramicraft-cs-agent"
 
+    # MLflow (optional)
+    MLFLOW_TRACKING_URI: str = ""
+    MLFLOW_EXPERIMENT_NAME: str = "ceramicraft-cs-agent"
+
 
 @cache
 def get_settings() -> Settings:

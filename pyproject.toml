@@ -21,6 +21,7 @@ dependencies = [
     "dttb>=0.3.2",
     "fastapi>=0.115.0",
     "uvicorn>=0.34.0",
+    "mlflow>=3,<4",
 ]
 
 [dependency-groups]

@@ -1,5 +1,10 @@
 """System prompt templates for the Customer Support Agent."""
 
+import logging as _logging
+
+_logger = _logging.getLogger(__name__)
+_prompt_cache: dict[str, str] = {}
+
 # Main system prompt (backward compatibility)
 SYSTEM_PROMPT = """\
 You are a friendly customer support assistant for CeramiCraft, an online \
@@ -132,3 +137,71 @@ Guidelines:
 - Acknowledge their messages naturally
 - Offer to help with specific needs when relevant
 """
+
+# ---------------------------------------------------------------------------
+# MLflow Prompt Registry integration
+# ---------------------------------------------------------------------------
+
+
+def get_prompt(name: str, fallback: str) -> str:
+    """Load a prompt from MLflow prompt registry, falling back to the provided default.
+
+    Prompts are cached in-process so MLflow is hit at most once per prompt name.
+    Any failure (mlflow not installed, network error, prompt not found) returns
+    the fallback silently.
+    """
+    if name in _prompt_cache:
+        return _prompt_cache[name]
+
+    try:
+        import mlflow  # noqa: PLC0415
+
+        tracking_uri = __import__("os").environ.get("MLFLOW_TRACKING_URI")
+        if not tracking_uri:
+            _prompt_cache[name] = fallback
+            return fallback
+
+        client = mlflow.MlflowClient(tracking_uri=tracking_uri)
+        prompt_obj = client.get_prompt(f"{name}@production")
+        template = prompt_obj.template  # type: ignore[union-attr]
+        if isinstance(template, str):
+            _prompt_cache[name] = template
+            return template
+        # If template is a list (chat format), join content fields
+        joined = "\n".join(
+            m.get("content", "") if isinstance(m, dict) else str(m) for m in template
+        )
+        _prompt_cache[name] = joined
+        return joined
+    except Exception as exc:
+        _logger.debug("Could not load prompt '%s' from MLflow: %s", name, exc)
+        _prompt_cache[name] = fallback
+        return fallback
+
+
+def get_system_prompt() -> str:
+    return get_prompt("SYSTEM_PROMPT", SYSTEM_PROMPT)
+
+
+def get_browse_prompt() -> str:
+    return get_prompt("BROWSE_PROMPT", BROWSE_PROMPT)
+
+
+def get_cart_prompt() -> str:
+    return get_prompt("CART_PROMPT", CART_PROMPT)
+
+
+def get_order_prompt() -> str:
+    return get_prompt("ORDER_PROMPT", ORDER_PROMPT)
+
+
+def get_review_prompt() -> str:
+    return get_prompt("REVIEW_PROMPT", REVIEW_PROMPT)
+
+
+def get_account_prompt() -> str:
+    return get_prompt("ACCOUNT_PROMPT", ACCOUNT_PROMPT)
+
+
+def get_chitchat_prompt() -> str:
+    return get_prompt("CHITCHAT_PROMPT", CHITCHAT_PROMPT)
