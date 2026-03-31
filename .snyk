@@ -1,0 +1,44 @@
+# Snyk (https://snyk.io) policy file
+# Ignore upstream mlflow CVEs with no available patch
+version: v1.25.0
+ignore:
+  SNYK-PYTHON-MLFLOW-7210300:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210309:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210311:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210331:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210332:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210333:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210334:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210335:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210336:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-15325638:
+    - '*':
+        reason: Upstream mlflow CVE, no patch available
+        expires: 2026-06-30T00:00:00.000Z

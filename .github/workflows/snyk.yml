@@ -35,7 +35,13 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         run: |
           mkdir -p sarif-reports
-          snyk test --file=requirements.txt --severity-threshold=high --sarif-file-output=sarif-reports/snyk-cs-agent.sarif || true
+          snyk test --file=requirements.txt --severity-threshold=high --sarif-file-output=sarif-reports/snyk-cs-agent.sarif --policy-path=.snyk
+
+      - name: Upload Snyk SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: sarif-reports/snyk-cs-agent.sarif
 
       - name: Snyk monitor
         run: snyk monitor --file=requirements.txt
