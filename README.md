@@ -38,7 +38,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
                        │    │                  │  Node   │                    ││
                        │    │                  └─────────┘                    ││
                        │    │                        │                        ││
-                       │    └─ invoke (MemorySaver — checkpointer)             ││
+                       │    └─ invoke (PostgresSaver / MemorySaver checkpointer)     ││
                        │                             ▼                        │
                        │                       Response                       │
                        └────────────────────────────────────────────────────────┘
@@ -70,9 +70,11 @@ class AgentState(TypedDict):
     confirmed: bool                          # User has confirmed action
 ```
 
-Conversation history is preserved across requests via a shared `MemorySaver`
-keyed by `thread_id`. The MCP client session is persistent (process lifetime)
-to keep tool handles valid.
+Conversation history is persisted across requests via a shared checkpointer keyed by `thread_id`.
+When `POSTGRES_USER` / `POSTGRES_HOST` (or `POSTGRES_URL`) is configured, a **PostgreSQL checkpointer**
+is used (via `langgraph-checkpoint-postgres`), backed by the shared `ceramicraft-postgres` container
+used by log-ms and notification-ms. If postgres is not configured, it falls back to an in-memory
+`MemorySaver` (history is lost on restart).
 
 ## REST API
 
@@ -129,5 +131,9 @@ MLFLOW_TRACKING_URI=http://localhost:5000 uv run python scripts/run_evaluation.p
 | `LANGSMITH_PROJECT` | LangSmith project name | `ceramicraft-cs-agent` |
 | `MLFLOW_TRACKING_URI` | MLflow tracking server URL | *(optional)* |
 | `MLFLOW_EXPERIMENT_NAME` | MLflow experiment name | `ceramicraft-cs-agent` |
-| `POSTGRES_URL` | PostgreSQL URL for persistent checkpoints (falls back to in-memory if unset) | *(optional)* |
+| `POSTGRES_USER` | PostgreSQL user — shared with log-ms / notification-ms | *(optional)* |
+| `POSTGRES_PASSWORD` | PostgreSQL password | *(optional)* |
+| `POSTGRES_HOST` | PostgreSQL host (e.g. `postgres` inside docker network) | *(optional)* |
+| `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `POSTGRES_URL` | Explicit connection URL override (takes priority over individual vars) | *(optional)* |
 | `AGENT_MAX_HISTORY` | Max messages passed to subgraphs (older trimmed to prevent token explosion) | `20` |
