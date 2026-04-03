@@ -275,6 +275,26 @@ def test_reset_clears_memory_saver(client):
         graph_mod._checkpointer = original
 
 
+def test_reset_returns_500_on_error(client):
+    """POST /reset should return 500 if adelete_thread raises."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    import ceramicraft_customer_support_agent.graph as graph_mod
+
+    mock_checkpointer = MagicMock()
+    mock_checkpointer.adelete_thread = AsyncMock(side_effect=Exception("db error"))
+
+    original = graph_mod._checkpointer
+    graph_mod._checkpointer = mock_checkpointer
+
+    try:
+        resp = client.post("/reset?thread_id=bad-thread")
+        assert resp.status_code == 500
+        assert resp.json()["status"] == "error"
+    finally:
+        graph_mod._checkpointer = original
+
+
 @patch("serve.set_auth_token")
 @patch("serve.build_agent")
 @patch("serve.get_tools")

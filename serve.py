@@ -170,6 +170,13 @@ async def reset(thread_id: str):
         await checkpointer.adelete_thread(thread_id)
     except Exception:
         logger.exception("Failed to delete checkpoints for thread %s", thread_id)
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": "error",
+                "message": f"Failed to reset conversation '{thread_id}'.",
+            },
+        )
 
     return ResetResponse(
         status="ok",

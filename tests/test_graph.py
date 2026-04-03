@@ -235,19 +235,16 @@ def test_trim_messages_exact_limit():
 # --- build_checkpointer tests ---
 
 
-@patch("ceramicraft_customer_support_agent.graph.build_checkpointer")
-def test_build_checkpointer_no_postgres_url(mock_build):
+@patch("ceramicraft_customer_support_agent.config.get_settings")
+def test_build_checkpointer_no_postgres_url(mock_settings):
     """POSTGRES_URL empty should return MemorySaver."""
     from langgraph.checkpoint.memory import MemorySaver
 
-    mock_build.return_value = MemorySaver()
-    with patch(
-        "ceramicraft_customer_support_agent.config.get_settings"
-    ) as mock_settings:
-        mock_cfg = MagicMock()
-        mock_cfg.POSTGRES_URL = ""
-        mock_settings.return_value = mock_cfg
-        result = build_checkpointer()
+    mock_cfg = MagicMock()
+    mock_cfg.POSTGRES_URL = ""
+    mock_settings.return_value = mock_cfg
+
+    result = build_checkpointer()
 
     assert isinstance(result, MemorySaver)
 
