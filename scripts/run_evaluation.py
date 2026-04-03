@@ -16,6 +16,7 @@ import os
 import statistics
 import time
 import uuid
+from typing import Any
 
 import httpx
 import mlflow
@@ -32,7 +33,7 @@ MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", "")
 # ---------------------------------------------------------------------------
 # Test dataset — covers key scenarios across all subgraphs
 # ---------------------------------------------------------------------------
-EVAL_DATASET = [
+EVAL_DATASET: list[dict[str, Any]] = [
     # --- browse ---
     {
         "input": "你们有陶瓷花瓶吗？",

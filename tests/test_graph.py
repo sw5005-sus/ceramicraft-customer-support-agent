@@ -1,5 +1,6 @@
 """Tests for the graph module."""
 
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from ceramicraft_customer_support_agent.graph import (
@@ -244,7 +245,7 @@ def test_build_checkpointer_no_postgres_url():
     original = config_mod.get_settings
     mock_cfg = MagicMock()
     mock_cfg.POSTGRES_URL = ""
-    config_mod.get_settings = lambda: mock_cfg  # type: ignore[assignment]
+    config_mod.get_settings = cast(Any, lambda: mock_cfg)
     try:
         result = build_checkpointer()
     finally:
@@ -261,17 +262,12 @@ def test_build_checkpointer_fallback_on_error():
     original = config_mod.get_settings
     mock_cfg = MagicMock()
     mock_cfg.POSTGRES_URL = "postgresql://bad@localhost/nodb"
-    config_mod.get_settings = lambda: mock_cfg  # type: ignore[assignment]
+    config_mod.get_settings = cast(Any, lambda: mock_cfg)
     try:
         # Make psycopg_pool.ConnectionPool raise to trigger fallback
-        with patch.dict(
-            "sys.modules",
-            {
-                "psycopg_pool": MagicMock(
-                    **{"ConnectionPool.side_effect": Exception("connection refused")}
-                )
-            },
-        ):
+        psycopg_pool_mock = MagicMock()
+        psycopg_pool_mock.ConnectionPool.side_effect = Exception("connection refused")
+        with patch.dict("sys.modules", {"psycopg_pool": psycopg_pool_mock}):
             result = build_checkpointer()
     finally:
         config_mod.get_settings = original
