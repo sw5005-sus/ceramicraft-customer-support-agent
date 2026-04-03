@@ -35,7 +35,7 @@ def test_health_check(client):
     assert resp.json() == {"status": "ok"}
 
 
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_returns_reply_with_thread_id(mock_get_tools, mock_build, client):
     """POST /chat should return the agent's reply and a thread_id."""
@@ -57,7 +57,7 @@ def test_chat_returns_reply_with_thread_id(mock_get_tools, mock_build, client):
     assert data["thread_id"] == "t1"
 
 
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_generates_thread_id_when_omitted(mock_get_tools, mock_build, client):
     """POST /chat without thread_id should auto-generate one."""
@@ -79,7 +79,7 @@ def test_chat_generates_thread_id_when_omitted(mock_get_tools, mock_build, clien
     assert len(data["thread_id"]) == 32  # uuid4 hex
 
 
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_preserves_explicit_thread_id(mock_get_tools, mock_build, client):
     """POST /chat with explicit thread_id should use it, not generate."""
@@ -103,7 +103,7 @@ def test_chat_preserves_explicit_thread_id(mock_get_tools, mock_build, client):
     assert call_config["configurable"]["thread_id"] == "my-thread-42"
 
 
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_extracts_bearer_token(mock_get_tools, mock_build, client):
     """POST /chat should extract Bearer token from Authorization header."""
@@ -130,7 +130,7 @@ def test_chat_extracts_bearer_token(mock_get_tools, mock_build, client):
     assert state["auth_token"] == "mytoken123"
 
 
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_without_token(mock_get_tools, mock_build, client):
     """POST /chat should set auth_token=None when no header."""
@@ -153,7 +153,7 @@ def test_chat_without_token(mock_get_tools, mock_build, client):
     assert state["auth_token"] is None
 
 
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_handles_dict_messages(mock_get_tools, mock_build, client):
     """POST /chat should handle dict format messages."""
@@ -173,7 +173,7 @@ def test_chat_handles_dict_messages(mock_get_tools, mock_build, client):
     assert data["thread_id"]  # auto-generated
 
 
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_fallback_on_empty_content(mock_get_tools, mock_build, client):
     """POST /chat should return fallback when AI message has empty content."""
@@ -296,7 +296,7 @@ def test_reset_returns_500_on_error(client):
 
 
 @patch("serve.set_auth_token")
-@patch("serve.build_agent")
+@patch("serve.build_agent", new_callable=AsyncMock)
 @patch("serve.get_tools")
 def test_chat_sets_auth_context(mock_get_tools, mock_build, mock_set_token, client):
     """POST /chat should call set_auth_token before agent invocation."""

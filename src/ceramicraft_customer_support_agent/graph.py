@@ -30,8 +30,12 @@ logger = logging.getLogger(__name__)
 _checkpointer: Any = None
 
 
-def build_checkpointer() -> Any:
-    """Build a checkpointer: PostgreSQL if configured, MemorySaver otherwise."""
+async def build_checkpointer() -> Any:
+    """Build a checkpointer: PostgreSQL (async) if configured, MemorySaver otherwise.
+
+    Uses AsyncPostgresSaver + AsyncConnectionPool so the checkpointer is
+    compatible with the async agent invocation path (ainvoke / astream).
+    """
     from ceramicraft_customer_support_agent.config import get_settings
 
     settings = get_settings()
@@ -39,9 +43,9 @@ def build_checkpointer() -> Any:
     if settings.DATABASE_URL:
         try:
             from psycopg.rows import dict_row
-            from psycopg_pool import ConnectionPool
+            from psycopg_pool import AsyncConnectionPool
 
-            from langgraph.checkpoint.postgres import PostgresSaver
+            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
             # psycopg_pool expects libpq DSN, not SQLAlchemy URL.
             # Strip the "postgresql+psycopg://" scheme prefix if present.
@@ -49,20 +53,24 @@ def build_checkpointer() -> Any:
             if conninfo.startswith("postgresql+psycopg://"):
                 conninfo = conninfo.replace("postgresql+psycopg://", "postgresql://", 1)
 
-            # Use configure callback to set row_factory so psycopg_pool
-            # returns Connection[DictRow] matching PostgresSaver's type requirement.
-            def _configure(conn: Any) -> None:
+            # Use async configure callback to set row_factory.
+            async def _configure(conn: Any) -> None:
                 conn.row_factory = dict_row
 
-            pool: ConnectionPool[Any] = ConnectionPool(
+            pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
                 conninfo=conninfo,
                 max_size=10,
                 kwargs={"autocommit": True},
                 configure=_configure,
+                open=False,  # open manually so we can await it
             )
-            checkpointer = PostgresSaver(pool)
-            checkpointer.setup()  # creates tables if not exists
-            logger.info("Using PostgreSQL checkpointer: %s", settings.POSTGRES_HOST)
+            await pool.open(wait=True)
+            checkpointer = AsyncPostgresSaver(pool)
+            # Creates LangGraph checkpoint tables if they don't exist yet.
+            await checkpointer.setup()
+            logger.info(
+                "Using async PostgreSQL checkpointer: %s", settings.POSTGRES_HOST
+            )
             return checkpointer
         except Exception as exc:
             logger.warning(
@@ -74,11 +82,11 @@ def build_checkpointer() -> Any:
     return MemorySaver()
 
 
-def get_checkpointer() -> Any:
+async def get_checkpointer() -> Any:
     """Get or initialize the module-level checkpointer."""
     global _checkpointer
     if _checkpointer is None:
-        _checkpointer = build_checkpointer()
+        _checkpointer = await build_checkpointer()
     return _checkpointer
 
 
@@ -92,7 +100,7 @@ class AgentState(TypedDict):
     confirmed: bool
 
 
-def build_graph(tools: Sequence[BaseTool]) -> Any:
+async def build_graph(tools: Sequence[BaseTool]) -> Any:
     """Build the main customer support agent graph.
 
     Creates a StateGraph with intent classification, domain routing,
@@ -106,7 +114,7 @@ def build_graph(tools: Sequence[BaseTool]) -> Any:
     """
     # Use module-level shared checkpointer so conversation history
     # survives across requests with the same thread_id.
-    memory = get_checkpointer()
+    memory = await get_checkpointer()
 
     # Create the main graph
     graph = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]

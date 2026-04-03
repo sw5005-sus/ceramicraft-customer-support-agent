@@ -11,7 +11,7 @@ from ceramicraft_customer_support_agent.graph import build_graph
 logger = logging.getLogger(__name__)
 
 
-def build_agent(tools: Sequence[BaseTool]) -> Any:
+async def build_agent(tools: Sequence[BaseTool]) -> Any:
     """Build a customer support agent with the given tools.
 
     This function provides backward compatibility with the old agent interface
@@ -23,7 +23,7 @@ def build_agent(tools: Sequence[BaseTool]) -> Any:
     Returns:
         A compiled LangGraph agent ready to invoke.
     """
-    agent = build_graph(tools)
+    agent = await build_graph(tools)
 
     logger.info(
         "Agent built with %d tools using LangGraph StateGraph",

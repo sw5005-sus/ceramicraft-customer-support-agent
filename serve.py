@@ -51,7 +51,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
     init_mlflow_tracing()
     try:
         tools = await get_tools()
-        _agent_cache["agent"] = build_agent(tools)
+        _agent_cache["agent"] = await build_agent(tools)
         logger.info("Agent pre-warmed with %d tools", len(tools))
     except Exception:
         logger.exception("Failed to pre-warm agent (will retry on first request)")
@@ -106,7 +106,7 @@ async def chat(body: ChatRequest, request: Request):
         # Build on first request if lifespan pre-warm failed
         if "agent" not in _agent_cache:
             tools = await get_tools()
-            _agent_cache["agent"] = build_agent(tools)
+            _agent_cache["agent"] = await build_agent(tools)
 
         agent = _agent_cache["agent"]
 
@@ -165,7 +165,7 @@ async def reset(thread_id: str):
     """Reset the conversation history for a given thread."""
     from ceramicraft_customer_support_agent.graph import get_checkpointer
 
-    checkpointer = get_checkpointer()
+    checkpointer = await get_checkpointer()
     try:
         await checkpointer.adelete_thread(thread_id)
     except Exception:

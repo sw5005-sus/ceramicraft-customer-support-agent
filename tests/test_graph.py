@@ -39,7 +39,7 @@ def test_agent_state_structure():
 @patch("ceramicraft_customer_support_agent.graph.build_chitchat_node")
 @patch("ceramicraft_customer_support_agent.graph.build_escalate_node")
 @patch("ceramicraft_customer_support_agent.graph.StateGraph")
-def test_build_graph_creates_all_nodes(
+async def test_build_graph_creates_all_nodes(
     mock_state_graph,
     mock_escalate,
     mock_chitchat,
@@ -52,6 +52,8 @@ def test_build_graph_creates_all_nodes(
     mock_classifier,
 ):
     """build_graph should create all required nodes."""
+    from unittest.mock import AsyncMock
+
     mock_tools = [MagicMock()]
     mock_graph_instance = MagicMock()
     mock_state_graph.return_value = mock_graph_instance
@@ -68,7 +70,11 @@ def test_build_graph_creates_all_nodes(
     mock_chitchat.return_value = MagicMock()
     mock_escalate.return_value = MagicMock()
 
-    result = build_graph(mock_tools)
+    with patch(
+        "ceramicraft_customer_support_agent.graph.get_checkpointer",
+        new=AsyncMock(return_value=MagicMock()),
+    ):
+        result = await build_graph(mock_tools)
 
     # Check that StateGraph was created with AgentState
     mock_state_graph.assert_called_once_with(AgentState)
@@ -142,7 +148,7 @@ def test_route_by_intent_with_all_intents():
 @patch("ceramicraft_customer_support_agent.graph.build_chitchat_node")
 @patch("ceramicraft_customer_support_agent.graph.build_escalate_node")
 @patch("ceramicraft_customer_support_agent.graph.StateGraph")
-def test_build_graph_with_empty_tools(
+async def test_build_graph_with_empty_tools(
     mock_state_graph,
     mock_escalate,
     mock_chitchat,
@@ -155,6 +161,8 @@ def test_build_graph_with_empty_tools(
     mock_classifier,
 ):
     """build_graph should work with empty tools list."""
+    from unittest.mock import AsyncMock
+
     mock_graph_instance = MagicMock()
     mock_state_graph.return_value = mock_graph_instance
     mock_graph_instance.compile.return_value = MagicMock()
@@ -170,7 +178,11 @@ def test_build_graph_with_empty_tools(
     mock_chitchat.return_value = MagicMock()
     mock_escalate.return_value = MagicMock()
 
-    result = build_graph([])
+    with patch(
+        "ceramicraft_customer_support_agent.graph.get_checkpointer",
+        new=AsyncMock(return_value=MagicMock()),
+    ):
+        result = await build_graph([])
 
     # Should still create the graph structure
     assert result is mock_graph_instance.compile.return_value
@@ -195,9 +207,14 @@ def test_route_by_intent_logs_routing(mock_logger):
 
 def test_checkpointer_is_shared():
     """get_checkpointer should return the same instance on repeated calls."""
-    cp1 = get_checkpointer()
-    cp2 = get_checkpointer()
-    assert cp1 is cp2
+    import asyncio
+
+    async def _run():
+        cp1 = await get_checkpointer()
+        cp2 = await get_checkpointer()
+        assert cp1 is cp2
+
+    asyncio.run(_run())
 
 
 # --- _trim_messages tests ---
@@ -236,7 +253,7 @@ def test_trim_messages_exact_limit():
 
 
 @patch("ceramicraft_customer_support_agent.config.get_settings")
-def test_build_checkpointer_no_postgres_host(mock_settings):
+async def test_build_checkpointer_no_postgres_host(mock_settings):
     """DATABASE_URL empty (POSTGRES_HOST unset) should return MemorySaver."""
     from langgraph.checkpoint.memory import MemorySaver
 
@@ -244,13 +261,13 @@ def test_build_checkpointer_no_postgres_host(mock_settings):
     mock_cfg.DATABASE_URL = ""
     mock_settings.return_value = mock_cfg
 
-    result = build_checkpointer()
+    result = await build_checkpointer()
 
     assert isinstance(result, MemorySaver)
 
 
 @patch("ceramicraft_customer_support_agent.config.get_settings")
-def test_build_checkpointer_fallback_on_error(mock_settings):
+async def test_build_checkpointer_fallback_on_error(mock_settings):
     """PostgreSQL connection failure should fall back to MemorySaver."""
     from langgraph.checkpoint.memory import MemorySaver
 
@@ -259,9 +276,9 @@ def test_build_checkpointer_fallback_on_error(mock_settings):
     mock_settings.return_value = mock_cfg
 
     psycopg_pool_mock = MagicMock()
-    psycopg_pool_mock.ConnectionPool.side_effect = Exception("connection refused")
+    psycopg_pool_mock.AsyncConnectionPool.side_effect = Exception("connection refused")
     with patch.dict("sys.modules", {"psycopg_pool": psycopg_pool_mock}):
-        result = build_checkpointer()
+        result = await build_checkpointer()
 
     assert isinstance(result, MemorySaver)
 
