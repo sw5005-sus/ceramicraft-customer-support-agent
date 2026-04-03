@@ -129,3 +129,5 @@ MLFLOW_TRACKING_URI=http://localhost:5000 uv run python scripts/run_evaluation.p
 | `LANGSMITH_PROJECT` | LangSmith project name | `ceramicraft-cs-agent` |
 | `MLFLOW_TRACKING_URI` | MLflow tracking server URL | *(optional)* |
 | `MLFLOW_EXPERIMENT_NAME` | MLflow experiment name | `ceramicraft-cs-agent` |
+| `POSTGRES_URL` | PostgreSQL URL for persistent checkpoints (falls back to in-memory if unset) | *(optional)* |
+| `AGENT_MAX_HISTORY` | Max messages passed to subgraphs (older trimmed to prevent token explosion) | `20` |

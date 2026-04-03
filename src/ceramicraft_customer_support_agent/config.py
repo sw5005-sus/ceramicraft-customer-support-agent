@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     MLFLOW_TRACKING_URI: str = ""
     MLFLOW_EXPERIMENT_NAME: str = "ceramicraft-cs-agent"
 
+    # PostgreSQL checkpoint (optional — falls back to MemorySaver if not set)
+    POSTGRES_URL: str = ""
+
+    # Max messages to pass to subgraphs (older messages are trimmed)
+    AGENT_MAX_HISTORY: int = 20
+
 
 @cache
 def get_settings() -> Settings:

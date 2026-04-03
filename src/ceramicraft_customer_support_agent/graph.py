@@ -26,8 +26,53 @@ from ceramicraft_customer_support_agent.subgraphs import (
 
 logger = logging.getLogger(__name__)
 
-# Module-level shared checkpointer — persists across requests
-_checkpointer = MemorySaver()
+# Module-level shared checkpointer — lazily initialized
+_checkpointer: Any = None
+
+
+def build_checkpointer() -> Any:
+    """Build a checkpointer: PostgreSQL if configured, MemorySaver otherwise."""
+    from ceramicraft_customer_support_agent.config import get_settings
+
+    settings = get_settings()
+
+    if settings.POSTGRES_URL:
+        try:
+            from psycopg_pool import ConnectionPool
+
+            from langgraph.checkpoint.postgres import PostgresSaver
+
+            # psycopg_pool expects libpq DSN, not SQLAlchemy URL.
+            # Strip the "postgresql+psycopg://" scheme prefix if present.
+            conninfo = settings.POSTGRES_URL
+            if conninfo.startswith("postgresql+psycopg://"):
+                conninfo = conninfo.replace("postgresql+psycopg://", "postgresql://", 1)
+
+            pool = ConnectionPool(
+                conninfo=conninfo,
+                max_size=10,
+                kwargs={"autocommit": True},
+            )
+            checkpointer = PostgresSaver(pool)
+            checkpointer.setup()  # creates tables if not exists
+            logger.info("Using PostgreSQL checkpointer: %s", settings.POSTGRES_URL)
+            return checkpointer
+        except Exception as exc:
+            logger.warning(
+                "Failed to init PostgreSQL checkpointer, falling back to MemorySaver: %s",
+                exc,
+            )
+
+    logger.info("Using in-memory checkpointer (MemorySaver)")
+    return MemorySaver()
+
+
+def get_checkpointer() -> Any:
+    """Get or initialize the module-level checkpointer."""
+    global _checkpointer
+    if _checkpointer is None:
+        _checkpointer = build_checkpointer()
+    return _checkpointer
 
 
 class AgentState(TypedDict):
@@ -54,7 +99,7 @@ def build_graph(tools: Sequence[BaseTool]) -> Any:
     """
     # Use module-level shared checkpointer so conversation history
     # survives across requests with the same thread_id.
-    memory = _checkpointer
+    memory = get_checkpointer()
 
     # Create the main graph
     graph = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
@@ -173,6 +218,13 @@ def _sanitize_messages(messages: list) -> list:
     return clean
 
 
+def _trim_messages(messages: list, max_history: int) -> list:
+    """Keep only the most recent max_history messages."""
+    if max_history <= 0 or len(messages) <= max_history:
+        return messages
+    return messages[-max_history:]
+
+
 def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
     """Wrap a subgraph agent to work with the main graph state.
 
@@ -189,6 +241,9 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
         """Invoke a domain subgraph with the current state."""
         try:
             messages = _sanitize_messages(state.get("messages", []))
+            from ceramicraft_customer_support_agent.config import get_settings
+
+            messages = _trim_messages(messages, get_settings().AGENT_MAX_HISTORY)
 
             result = await subgraph.ainvoke(
                 {"messages": messages},

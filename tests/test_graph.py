@@ -4,8 +4,10 @@ from unittest.mock import MagicMock, patch
 
 from ceramicraft_customer_support_agent.graph import (
     AgentState,
-    _checkpointer,
+    _trim_messages,
+    build_checkpointer,
     build_graph,
+    get_checkpointer,
     route_by_intent,
 )
 
@@ -192,7 +194,85 @@ def test_route_by_intent_logs_routing(mock_logger):
 
 
 def test_checkpointer_is_shared():
-    """Module-level _checkpointer should be a single MemorySaver instance."""
+    """get_checkpointer should return the same instance on repeated calls."""
+    cp1 = get_checkpointer()
+    cp2 = get_checkpointer()
+    assert cp1 is cp2
+
+
+# --- _trim_messages tests ---
+
+
+def test_trim_messages_under_limit():
+    """Messages count < max should not be trimmed."""
+    msgs = [{"role": "user", "content": str(i)} for i in range(5)]
+    result = _trim_messages(msgs, 10)
+    assert result == msgs
+
+
+def test_trim_messages_over_limit():
+    """Messages count > max should keep only the most recent N."""
+    msgs = [{"role": "user", "content": str(i)} for i in range(25)]
+    result = _trim_messages(msgs, 10)
+    assert len(result) == 10
+    assert result == msgs[-10:]
+
+
+def test_trim_messages_zero_limit():
+    """limit=0 should not trim (disabled)."""
+    msgs = [{"role": "user", "content": str(i)} for i in range(100)]
+    result = _trim_messages(msgs, 0)
+    assert result == msgs
+
+
+def test_trim_messages_exact_limit():
+    """Messages count == max should not be trimmed."""
+    msgs = [{"role": "user", "content": str(i)} for i in range(20)]
+    result = _trim_messages(msgs, 20)
+    assert result == msgs
+
+
+# --- build_checkpointer tests ---
+
+
+def test_build_checkpointer_no_postgres_url():
+    """POSTGRES_URL empty should return MemorySaver."""
     from langgraph.checkpoint.memory import MemorySaver
 
-    assert isinstance(_checkpointer, MemorySaver)
+    import ceramicraft_customer_support_agent.config as config_mod
+
+    original = config_mod.get_settings
+    mock_cfg = MagicMock()
+    mock_cfg.POSTGRES_URL = ""
+    config_mod.get_settings = lambda: mock_cfg  # type: ignore[assignment]
+    try:
+        result = build_checkpointer()
+    finally:
+        config_mod.get_settings = original
+    assert isinstance(result, MemorySaver)
+
+
+def test_build_checkpointer_fallback_on_error():
+    """PostgreSQL connection failure should fall back to MemorySaver."""
+    from langgraph.checkpoint.memory import MemorySaver
+
+    import ceramicraft_customer_support_agent.config as config_mod
+
+    original = config_mod.get_settings
+    mock_cfg = MagicMock()
+    mock_cfg.POSTGRES_URL = "postgresql://bad@localhost/nodb"
+    config_mod.get_settings = lambda: mock_cfg  # type: ignore[assignment]
+    try:
+        # Make psycopg_pool.ConnectionPool raise to trigger fallback
+        with patch.dict(
+            "sys.modules",
+            {
+                "psycopg_pool": MagicMock(
+                    **{"ConnectionPool.side_effect": Exception("connection refused")}
+                )
+            },
+        ):
+            result = build_checkpointer()
+    finally:
+        config_mod.get_settings = original
+    assert isinstance(result, MemorySaver)

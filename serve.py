@@ -163,9 +163,26 @@ async def chat(body: ChatRequest, request: Request):
 @app.post("/reset", response_model=ResetResponse)
 async def reset(thread_id: str):
     """Reset the conversation history for a given thread."""
+    from ceramicraft_customer_support_agent.graph import get_checkpointer
+    from langgraph.checkpoint.memory import MemorySaver
+
+    checkpointer = get_checkpointer()
+
+    if isinstance(checkpointer, MemorySaver):
+        # MemorySaver internal storage is a dict keyed by (thread_id, checkpoint_ns, checkpoint_id)
+        keys_to_delete = [k for k in checkpointer.storage if k[0] == thread_id]
+        for k in keys_to_delete:
+            del checkpointer.storage[k]
+    else:
+        # PostgreSQL checkpointer — use native delete_thread API
+        try:
+            await checkpointer.adelete_thread(thread_id)
+        except Exception:
+            logger.exception("Failed to delete checkpoints for thread %s", thread_id)
+
     return ResetResponse(
         status="ok",
-        message=f"Conversation '{thread_id}' reset. Use a new thread_id to start fresh.",
+        message=f"Conversation '{thread_id}' reset successfully.",
     )
 
 

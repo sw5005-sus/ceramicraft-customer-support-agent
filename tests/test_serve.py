@@ -253,6 +253,34 @@ def test_reset_requires_thread_id(client):
     assert resp.status_code == 422  # Validation error
 
 
+def test_reset_clears_memory_saver(client):
+    """POST /reset should remove MemorySaver entries for the given thread."""
+    from langgraph.checkpoint.memory import MemorySaver
+
+    import ceramicraft_customer_support_agent.graph as graph_mod
+
+    # Ensure checkpointer is a MemorySaver and inject test data
+    mem = MemorySaver()
+    thread_id = "test-reset-thread"
+    mem.storage[thread_id, "", "cp1"] = b"data"  # type: ignore[index]
+    mem.storage[thread_id, "", "cp2"] = b"data2"  # type: ignore[index]
+    mem.storage["other-thread", "", "cp1"] = b"keep"  # type: ignore[index]
+
+    original = graph_mod._checkpointer
+    graph_mod._checkpointer = mem
+
+    try:
+        resp = client.post(f"/reset?thread_id={thread_id}")
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "ok"
+        # Thread entries should be gone
+        assert all(k[0] != thread_id for k in mem.storage)
+        # Other thread entries should remain
+        assert ("other-thread", "", "cp1") in mem.storage
+    finally:
+        graph_mod._checkpointer = original
+
+
 @patch("serve.set_auth_token")
 @patch("serve.build_agent")
 @patch("serve.get_tools")
