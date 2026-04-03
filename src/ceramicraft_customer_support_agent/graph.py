@@ -4,6 +4,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any, TypedDict
 
+from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import StateGraph
@@ -170,8 +171,6 @@ def _sanitize_messages(messages: list) -> list:
     This helper strips those orphaned AIMessages so downstream subgraphs
     receive a clean history.
     """
-    from langchain_core.messages import AIMessage, ToolMessage
-
     answered_ids: set[str] = set()
     for msg in messages:
         if isinstance(msg, ToolMessage):
