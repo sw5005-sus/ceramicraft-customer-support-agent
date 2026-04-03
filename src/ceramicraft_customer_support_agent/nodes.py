@@ -6,7 +6,10 @@ from collections.abc import Callable
 from langchain_openai import ChatOpenAI
 
 from ceramicraft_customer_support_agent.config import get_settings
-from ceramicraft_customer_support_agent.prompts import get_chitchat_prompt
+from ceramicraft_customer_support_agent.prompts import (
+    get_chitchat_prompt,
+    get_system_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +42,12 @@ def build_chitchat_node() -> Callable:
         _role_map = {"human": "user", "ai": "assistant", "system": "system"}
 
         # Add system prompt; filter tool-related messages that lack a plain role
-        full_messages = [{"role": "system", "content": get_chitchat_prompt()}] + [
+        full_messages = [
+            {
+                "role": "system",
+                "content": f"{get_system_prompt()}\n\n---\n\n{get_chitchat_prompt()}",
+            }
+        ] + [
             {
                 "role": _role_map[msg.type],
                 "content": str(msg.content) if hasattr(msg, "content") else str(msg),

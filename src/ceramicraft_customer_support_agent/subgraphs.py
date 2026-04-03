@@ -15,6 +15,7 @@ from ceramicraft_customer_support_agent.prompts import (
     get_cart_prompt,
     get_order_prompt,
     get_review_prompt,
+    get_system_prompt,
 )
 
 logger = logging.getLogger(__name__)
@@ -69,21 +70,27 @@ def _filter_tools(all_tools: Sequence[BaseTool], names: set[str]) -> list[BaseTo
 def _build_domain_subgraph(
     all_tools: Sequence[BaseTool],
     tool_names: set[str],
-    prompt: str,
+    domain_prompt: str,
     domain: str,
 ) -> Any:
     """Build a domain-specific ReAct subgraph.
 
+    The effective system prompt is the base system prompt (cross-domain rules)
+    followed by the domain-specific instructions, separated by a horizontal
+    rule.  This ensures cross-cutting rules (language, privacy, tone) are
+    always active regardless of which domain handles the request.
+
     Args:
         all_tools: Complete list of discovered tools.
         tool_names: Set of tool names for this domain.
-        prompt: Domain-specific system prompt.
+        domain_prompt: Domain-specific system prompt.
         domain: Domain name for logging.
 
     Returns:
         Compiled LangGraph agent for the domain.
     """
     tools = _filter_tools(all_tools, tool_names)
+    combined_prompt = f"{get_system_prompt()}\n\n---\n\n{domain_prompt}"
     # Subgraphs are stateless per-invocation; the *main* graph owns the
     # checkpointer for multi-turn persistence.  Giving subgraphs their own
     # checkpointer causes cross-request state leaks (tool_call messages from
@@ -91,7 +98,7 @@ def _build_domain_subgraph(
     agent = create_react_agent(  # ty: ignore[deprecated]
         model=_get_llm(),
         tools=tools,
-        prompt=prompt,
+        prompt=combined_prompt,
     )
     logger.info("Built %s subgraph with %d tools", domain, len(tools))
     return agent
