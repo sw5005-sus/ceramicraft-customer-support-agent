@@ -133,8 +133,7 @@ MLFLOW_TRACKING_URI=http://localhost:5000 uv run python scripts/run_evaluation.p
 | `MLFLOW_EXPERIMENT_NAME` | MLflow experiment name | `ceramicraft-cs-agent` |
 | `POSTGRES_USER` | PostgreSQL user — shared with log-ms / notification-ms | *(optional)* |
 | `POSTGRES_PASSWORD` | PostgreSQL password | *(optional)* |
-| `POSTGRES_HOST` | PostgreSQL host (e.g. `postgres` inside docker network) | *(optional)* |
+| `POSTGRES_HOST` | PostgreSQL host (e.g. `postgres` inside docker network); leave blank to use in-memory | *(optional)* |
 | `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `CS_AGENT_DB_NAME` | Database name for conversation checkpoints | `cs_agent_db` |
-| `POSTGRES_URL` | Explicit connection URL override (takes priority over individual vars) | *(optional)* |
 | `AGENT_MAX_HISTORY` | Max messages passed to subgraphs (older trimmed to prevent token explosion) | `20` |

@@ -36,7 +36,7 @@ def build_checkpointer() -> Any:
 
     settings = get_settings()
 
-    if settings.postgres_url:
+    if settings.DATABASE_URL:
         try:
             from psycopg.rows import dict_row
             from psycopg_pool import ConnectionPool
@@ -45,7 +45,7 @@ def build_checkpointer() -> Any:
 
             # psycopg_pool expects libpq DSN, not SQLAlchemy URL.
             # Strip the "postgresql+psycopg://" scheme prefix if present.
-            conninfo = settings.postgres_url
+            conninfo = settings.DATABASE_URL
             if conninfo.startswith("postgresql+psycopg://"):
                 conninfo = conninfo.replace("postgresql+psycopg://", "postgresql://", 1)
 
@@ -62,7 +62,7 @@ def build_checkpointer() -> Any:
             )
             checkpointer = PostgresSaver(pool)
             checkpointer.setup()  # creates tables if not exists
-            logger.info("Using PostgreSQL checkpointer: %s", settings.POSTGRES_URL)
+            logger.info("Using PostgreSQL checkpointer: %s", settings.POSTGRES_HOST)
             return checkpointer
         except Exception as exc:
             logger.warning(

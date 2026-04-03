@@ -236,12 +236,12 @@ def test_trim_messages_exact_limit():
 
 
 @patch("ceramicraft_customer_support_agent.config.get_settings")
-def test_build_checkpointer_no_postgres_url(mock_settings):
-    """postgres_url empty should return MemorySaver."""
+def test_build_checkpointer_no_postgres_host(mock_settings):
+    """DATABASE_URL empty (POSTGRES_HOST unset) should return MemorySaver."""
     from langgraph.checkpoint.memory import MemorySaver
 
     mock_cfg = MagicMock()
-    mock_cfg.postgres_url = ""
+    mock_cfg.DATABASE_URL = ""
     mock_settings.return_value = mock_cfg
 
     result = build_checkpointer()
@@ -255,7 +255,7 @@ def test_build_checkpointer_fallback_on_error(mock_settings):
     from langgraph.checkpoint.memory import MemorySaver
 
     mock_cfg = MagicMock()
-    mock_cfg.postgres_url = "postgresql://bad@localhost/nodb"
+    mock_cfg.DATABASE_URL = "postgresql+psycopg://bad:pw@localhost/nodb"
     mock_settings.return_value = mock_cfg
 
     psycopg_pool_mock = MagicMock()
@@ -266,23 +266,11 @@ def test_build_checkpointer_fallback_on_error(mock_settings):
     assert isinstance(result, MemorySaver)
 
 
-# --- Settings.postgres_url property tests ---
+# --- Settings.DATABASE_URL property tests ---
 
 
-def test_settings_postgres_url_explicit():
-    """POSTGRES_URL takes priority over individual vars."""
-    from ceramicraft_customer_support_agent.config import Settings
-
-    s = Settings(
-        POSTGRES_URL="postgresql+psycopg://override:pw@host/db",
-        POSTGRES_USER="user",
-        POSTGRES_HOST="postgres",
-    )
-    assert s.postgres_url == "postgresql+psycopg://override:pw@host/db"
-
-
-def test_settings_postgres_url_assembled():
-    """postgres_url is assembled from individual vars when POSTGRES_URL is empty."""
+def test_settings_database_url_assembled():
+    """DATABASE_URL is assembled from individual vars."""
     from ceramicraft_customer_support_agent.config import Settings
 
     s = Settings(
@@ -292,14 +280,14 @@ def test_settings_postgres_url_assembled():
         POSTGRES_PORT=5432,
         CS_AGENT_DB_NAME="cs_agent_db",
     )
-    assert s.postgres_url == (
+    assert s.DATABASE_URL == (
         "postgresql+psycopg://ceramicraft:ceramicraft123@postgres:5432/cs_agent_db"
     )
 
 
-def test_settings_postgres_url_empty_when_no_config():
-    """postgres_url is empty when no postgres vars are set."""
+def test_settings_database_url_empty_when_no_host():
+    """DATABASE_URL is empty when POSTGRES_HOST is not set."""
     from ceramicraft_customer_support_agent.config import Settings
 
     s = Settings()
-    assert s.postgres_url == ""
+    assert s.DATABASE_URL == ""
