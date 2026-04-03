@@ -16,9 +16,8 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from ceramicraft_customer_support_agent.agent import build_agent
 from ceramicraft_customer_support_agent.config import get_settings
-from ceramicraft_customer_support_agent.graph import get_checkpointer
+from ceramicraft_customer_support_agent.graph import build_checkpointer, build_graph
 from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token
 from ceramicraft_customer_support_agent.mlflow_utils import (
     init_mlflow_tracing,
@@ -34,7 +33,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Cache: once tools are discovered and the graph is compiled, reuse it.
+# Module-level cache: agent and checkpointer, built once at startup.
 _agent_cache: dict[str, Any] = {}
 
 
@@ -48,11 +47,13 @@ def _extract_bearer_token(request: Request) -> str | None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
-    """Pre-warm: discover MCP tools and build the agent on startup."""
+    """Build checkpointer, discover MCP tools and compile graph on startup."""
     init_mlflow_tracing()
     try:
+        checkpointer = await build_checkpointer()
         tools = await get_tools()
-        _agent_cache["agent"] = await build_agent(tools)
+        _agent_cache["agent"] = await build_graph(tools, checkpointer=checkpointer)
+        _agent_cache["checkpointer"] = checkpointer
         logger.info("Agent pre-warmed with %d tools", len(tools))
     except Exception:
         logger.exception("Failed to pre-warm agent (will retry on first request)")
@@ -104,14 +105,14 @@ async def chat(body: ChatRequest, request: Request):
     thread_id = body.thread_id or uuid.uuid4().hex
 
     try:
-        # Build on first request if lifespan pre-warm failed
+        # Rebuild if lifespan pre-warm failed
         if "agent" not in _agent_cache:
+            checkpointer = await build_checkpointer()
             tools = await get_tools()
-            _agent_cache["agent"] = await build_agent(tools)
+            _agent_cache["agent"] = await build_graph(tools, checkpointer=checkpointer)
+            _agent_cache["checkpointer"] = checkpointer
 
         agent = _agent_cache["agent"]
-
-        # Set per-request auth token so the MCP interceptor can inject it
         set_auth_token(token)
 
         initial_state = {
@@ -126,7 +127,6 @@ async def chat(body: ChatRequest, request: Request):
             config={"configurable": {"thread_id": thread_id}},
         )
 
-        # Tag the MLflow trace with request-level metadata
         tag_trace(
             {
                 "intent": response.get("intent", "unknown"),
@@ -164,7 +164,9 @@ async def chat(body: ChatRequest, request: Request):
 @app.post("/reset", response_model=ResetResponse)
 async def reset(thread_id: str):
     """Reset the conversation history for a given thread."""
-    checkpointer = await get_checkpointer()
+    checkpointer = _agent_cache.get("checkpointer")
+    if checkpointer is None:
+        checkpointer = await build_checkpointer()
     try:
         await checkpointer.adelete_thread(thread_id)
     except Exception:

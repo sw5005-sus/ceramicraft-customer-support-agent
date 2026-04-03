@@ -7,7 +7,6 @@ from ceramicraft_customer_support_agent.graph import (
     _trim_messages,
     build_checkpointer,
     build_graph,
-    get_checkpointer,
     route_by_intent,
 )
 
@@ -52,7 +51,6 @@ async def test_build_graph_creates_all_nodes(
     mock_classifier,
 ):
     """build_graph should create all required nodes."""
-    from unittest.mock import AsyncMock
 
     mock_tools = [MagicMock()]
     mock_graph_instance = MagicMock()
@@ -70,11 +68,7 @@ async def test_build_graph_creates_all_nodes(
     mock_chitchat.return_value = MagicMock()
     mock_escalate.return_value = MagicMock()
 
-    with patch(
-        "ceramicraft_customer_support_agent.graph.get_checkpointer",
-        new=AsyncMock(return_value=MagicMock()),
-    ):
-        result = await build_graph(mock_tools)
+    result = await build_graph(mock_tools, checkpointer=MagicMock())
 
     # Check that StateGraph was created with AgentState
     mock_state_graph.assert_called_once_with(AgentState)
@@ -190,7 +184,6 @@ async def test_build_graph_with_empty_tools(
     mock_classifier,
 ):
     """build_graph should work with empty tools list."""
-    from unittest.mock import AsyncMock
 
     mock_graph_instance = MagicMock()
     mock_state_graph.return_value = mock_graph_instance
@@ -207,11 +200,7 @@ async def test_build_graph_with_empty_tools(
     mock_chitchat.return_value = MagicMock()
     mock_escalate.return_value = MagicMock()
 
-    with patch(
-        "ceramicraft_customer_support_agent.graph.get_checkpointer",
-        new=AsyncMock(return_value=MagicMock()),
-    ):
-        result = await build_graph([])
+    result = await build_graph([], checkpointer=MagicMock())
 
     # Should still create the graph structure
     assert result is mock_graph_instance.compile.return_value
@@ -232,13 +221,6 @@ def test_route_by_intent_logs_routing(mock_logger):
     route_by_intent(state)  # ty: ignore[invalid-argument-type]
 
     mock_logger.info.assert_called_once_with("Routing to %s based on intent", "cart")
-
-
-async def test_checkpointer_is_shared():
-    """get_checkpointer should return the same instance on repeated calls."""
-    cp1 = await get_checkpointer()
-    cp2 = await get_checkpointer()
-    assert cp1 is cp2
 
 
 # --- _trim_messages tests ---

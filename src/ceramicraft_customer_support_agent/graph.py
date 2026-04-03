@@ -27,18 +27,13 @@ from ceramicraft_customer_support_agent.subgraphs import (
 
 logger = logging.getLogger(__name__)
 
-# Module-level shared checkpointer — lazily initialized
-_checkpointer: Any = None
-
 
 async def build_checkpointer() -> Any:
-    """Build a checkpointer: PostgreSQL (async) if configured, MemorySaver otherwise.
+    """Build a checkpointer: AsyncPostgresSaver if configured, MemorySaver otherwise.
 
     Uses AsyncPostgresSaver + AsyncConnectionPool so the checkpointer is
     compatible with the async agent invocation path (ainvoke / astream).
     """
-    from ceramicraft_customer_support_agent.config import get_settings
-
     settings = get_settings()
 
     if settings.DATABASE_URL:
@@ -49,12 +44,10 @@ async def build_checkpointer() -> Any:
             from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 
             # psycopg_pool expects libpq DSN, not SQLAlchemy URL.
-            # Strip the "postgresql+psycopg://" scheme prefix if present.
-            conninfo = settings.DATABASE_URL
-            if conninfo.startswith("postgresql+psycopg://"):
-                conninfo = conninfo.replace("postgresql+psycopg://", "postgresql://", 1)
+            conninfo = settings.DATABASE_URL.replace(
+                "postgresql+psycopg://", "postgresql://", 1
+            )
 
-            # Use async configure callback to set row_factory.
             async def _configure(conn: Any) -> None:
                 conn.row_factory = dict_row
 
@@ -63,11 +56,10 @@ async def build_checkpointer() -> Any:
                 max_size=10,
                 kwargs={"autocommit": True},
                 configure=_configure,
-                open=False,  # open manually so we can await it
+                open=False,
             )
             await pool.open(wait=True)
             checkpointer = AsyncPostgresSaver(pool)
-            # Creates LangGraph checkpoint tables if they don't exist yet.
             await checkpointer.setup()
             logger.info(
                 "Using async PostgreSQL checkpointer: %s", settings.POSTGRES_HOST
@@ -83,14 +75,6 @@ async def build_checkpointer() -> Any:
     return MemorySaver()
 
 
-async def get_checkpointer() -> Any:
-    """Get or initialize the module-level checkpointer."""
-    global _checkpointer
-    if _checkpointer is None:
-        _checkpointer = await build_checkpointer()
-    return _checkpointer
-
-
 class AgentState(TypedDict):
     """State for the customer support agent graph."""
 
@@ -101,30 +85,25 @@ class AgentState(TypedDict):
     confirmed: bool
 
 
-async def build_graph(tools: Sequence[BaseTool]) -> Any:
+async def build_graph(tools: Sequence[BaseTool], checkpointer: Any = None) -> Any:
     """Build the main customer support agent graph.
-
-    Creates a StateGraph with intent classification, domain routing,
-    and safety guards.
 
     Args:
         tools: LangChain-compatible tools (discovered from MCP Server).
+        checkpointer: Persistence backend for conversation history.
+                      If None, a new checkpointer is built from config.
 
     Returns:
         A compiled LangGraph agent ready to invoke.
     """
-    # Use module-level shared checkpointer so conversation history
-    # survives across requests with the same thread_id.
-    memory = await get_checkpointer()
+    if checkpointer is None:
+        checkpointer = await build_checkpointer()
 
-    # Create the main graph
     graph = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
 
-    # Build nodes
     classifier = build_classifier()
     guard = build_guard()
 
-    # Build domain subgraphs (stateless — main graph owns the checkpointer)
     browse_agent = build_browse_subgraph(tools)
     cart_agent = build_cart_subgraph(tools)
     order_agent = build_order_subgraph(tools)
@@ -148,10 +127,8 @@ async def build_graph(tools: Sequence[BaseTool]) -> Any:
     graph.add_node("escalate", escalate_node)
     graph.add_node("guard", guard)
 
-    # Set entry point
     graph.set_entry_point("classifier")
 
-    # Add routing edges from classifier
     domain_names = [name for name, _ in domain_subgraphs]
     graph.add_conditional_edges(
         "classifier",
@@ -159,15 +136,12 @@ async def build_graph(tools: Sequence[BaseTool]) -> Any:
         {name: name for name in [*domain_names, "chitchat", "escalate"]},
     )
 
-    # All domain nodes route through guard
     for name in [*domain_names, "chitchat", "escalate"]:
         graph.add_edge(name, "guard")
 
-    # Guard is the end
     graph.set_finish_point("guard")
 
-    # Compile with checkpointer
-    compiled = graph.compile(checkpointer=memory)
+    compiled = graph.compile(checkpointer=checkpointer)
 
     logger.info(
         "Graph built with %d tools across %d domain subgraphs",
@@ -179,14 +153,7 @@ async def build_graph(tools: Sequence[BaseTool]) -> Any:
 
 
 def route_by_intent(state: AgentState) -> str:
-    """Route based on classified intent.
-
-    Args:
-        state: Current agent state with intent classification.
-
-    Returns:
-        Node name to route to.
-    """
+    """Route based on classified intent."""
     intent = state.get("intent", "chitchat")
     logger.info("Routing to %s based on intent", intent)
     return intent
@@ -205,7 +172,6 @@ def _sanitize_messages(messages: list) -> list:
     """
     from langchain_core.messages import AIMessage, ToolMessage
 
-    # Collect all tool_call ids that have a matching ToolMessage
     answered_ids: set[str] = set()
     for msg in messages:
         if isinstance(msg, ToolMessage):
@@ -214,10 +180,8 @@ def _sanitize_messages(messages: list) -> list:
     clean: list = []
     for msg in messages:
         if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
-            # Keep only if every tool_call has a matching ToolMessage
             if all(tc["id"] in answered_ids for tc in msg.tool_calls):
                 clean.append(msg)
-            # else: drop orphaned AIMessage silently
         else:
             clean.append(msg)
     return clean
@@ -231,15 +195,15 @@ def _trim_messages(messages: list, max_history: int) -> list:
 
 
 def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
-    """Wrap a subgraph agent to work with the main graph state.
+    """Wrap a domain subgraph to work within the main graph state.
 
     Args:
         subgraph: A compiled LangGraph agent from create_react_agent.
         domain: Domain name for logging.
 
     Returns:
-        An async callable that extracts messages, invokes the subgraph,
-        and returns updates.
+        An async callable that sanitizes messages, invokes the subgraph,
+        and returns only the newly produced messages.
     """
 
     async def subgraph_node(state: AgentState) -> dict:
@@ -248,12 +212,8 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
             messages = _sanitize_messages(state.get("messages", []))
             messages = _trim_messages(messages, get_settings().AGENT_MAX_HISTORY)
 
-            result = await subgraph.ainvoke(
-                {"messages": messages},
-            )
+            result = await subgraph.ainvoke({"messages": messages})
 
-            # Return only the *new* messages the subgraph produced so
-            # add_messages in the parent graph doesn't duplicate history.
             new_messages = result.get("messages", [])
             if len(new_messages) > len(messages):
                 new_messages = new_messages[len(messages) :]

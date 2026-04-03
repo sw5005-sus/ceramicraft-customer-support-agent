@@ -5,12 +5,16 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-# Patch get_tools and build_agent before importing app to avoid real MCP calls
-with patch(
-    "ceramicraft_customer_support_agent.mcp_client.get_tools",
-    new_callable=AsyncMock,
-) as _mock_gt:
+# Patch get_tools and build_graph before importing app to avoid real MCP calls
+with (
+    patch(
+        "ceramicraft_customer_support_agent.mcp_client.get_tools",
+        new_callable=AsyncMock,
+    ) as _mock_gt,
+    patch("serve.build_checkpointer", new_callable=AsyncMock) as _mock_cp,
+):
     _mock_gt.return_value = []
+    _mock_cp.return_value = MagicMock()
     from serve import app, _agent_cache
 
 
@@ -35,9 +39,12 @@ def test_health_check(client):
     assert resp.json() == {"status": "ok"}
 
 
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_returns_reply_with_thread_id(mock_get_tools, mock_build, client):
+def test_chat_returns_reply_with_thread_id(
+    mock_get_tools, mock_build, mock_build_cp, client
+):
     """POST /chat should return the agent's reply and a thread_id."""
     mock_get_tools.return_value = []
 
@@ -57,9 +64,12 @@ def test_chat_returns_reply_with_thread_id(mock_get_tools, mock_build, client):
     assert data["thread_id"] == "t1"
 
 
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_generates_thread_id_when_omitted(mock_get_tools, mock_build, client):
+def test_chat_generates_thread_id_when_omitted(
+    mock_get_tools, mock_build, mock_build_cp, client
+):
     """POST /chat without thread_id should auto-generate one."""
     mock_get_tools.return_value = []
 
@@ -79,9 +89,12 @@ def test_chat_generates_thread_id_when_omitted(mock_get_tools, mock_build, clien
     assert len(data["thread_id"]) == 32  # uuid4 hex
 
 
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_preserves_explicit_thread_id(mock_get_tools, mock_build, client):
+def test_chat_preserves_explicit_thread_id(
+    mock_get_tools, mock_build, mock_build_cp, client
+):
     """POST /chat with explicit thread_id should use it, not generate."""
     mock_get_tools.return_value = []
 
@@ -103,9 +116,10 @@ def test_chat_preserves_explicit_thread_id(mock_get_tools, mock_build, client):
     assert call_config["configurable"]["thread_id"] == "my-thread-42"
 
 
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_extracts_bearer_token(mock_get_tools, mock_build, client):
+def test_chat_extracts_bearer_token(mock_get_tools, mock_build, mock_build_cp, client):
     """POST /chat should extract Bearer token from Authorization header."""
     mock_get_tools.return_value = []
 
@@ -130,9 +144,10 @@ def test_chat_extracts_bearer_token(mock_get_tools, mock_build, client):
     assert state["auth_token"] == "mytoken123"
 
 
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_without_token(mock_get_tools, mock_build, client):
+def test_chat_without_token(mock_get_tools, mock_build, mock_build_cp, client):
     """POST /chat should set auth_token=None when no header."""
     mock_get_tools.return_value = []
 
@@ -153,9 +168,10 @@ def test_chat_without_token(mock_get_tools, mock_build, client):
     assert state["auth_token"] is None
 
 
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_handles_dict_messages(mock_get_tools, mock_build, client):
+def test_chat_handles_dict_messages(mock_get_tools, mock_build, mock_build_cp, client):
     """POST /chat should handle dict format messages."""
     mock_get_tools.return_value = []
 
@@ -173,9 +189,12 @@ def test_chat_handles_dict_messages(mock_get_tools, mock_build, client):
     assert data["thread_id"]  # auto-generated
 
 
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_fallback_on_empty_content(mock_get_tools, mock_build, client):
+def test_chat_fallback_on_empty_content(
+    mock_get_tools, mock_build, mock_build_cp, client
+):
     """POST /chat should return fallback when AI message has empty content."""
     mock_get_tools.return_value = []
 
@@ -254,51 +273,44 @@ def test_reset_requires_thread_id(client):
 
 
 def test_reset_clears_memory_saver(client):
-    """POST /reset should call adelete_thread on the checkpointer."""
+    """POST /reset should call adelete_thread on the cached checkpointer."""
     from unittest.mock import AsyncMock, MagicMock
 
-    import ceramicraft_customer_support_agent.graph as graph_mod
+    from serve import _agent_cache
 
     mock_checkpointer = MagicMock()
     mock_checkpointer.adelete_thread = AsyncMock()
+    _agent_cache["checkpointer"] = mock_checkpointer
 
-    original = graph_mod._checkpointer
-    graph_mod._checkpointer = mock_checkpointer
-
-    try:
-        thread_id = "test-reset-thread"
-        resp = client.post(f"/reset?thread_id={thread_id}")
-        assert resp.status_code == 200
-        assert resp.json()["status"] == "ok"
-        mock_checkpointer.adelete_thread.assert_called_once_with(thread_id)
-    finally:
-        graph_mod._checkpointer = original
+    thread_id = "test-reset-thread"
+    resp = client.post(f"/reset?thread_id={thread_id}")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "ok"
+    mock_checkpointer.adelete_thread.assert_called_once_with(thread_id)
 
 
 def test_reset_returns_500_on_error(client):
     """POST /reset should return 500 if adelete_thread raises."""
     from unittest.mock import AsyncMock, MagicMock
 
-    import ceramicraft_customer_support_agent.graph as graph_mod
+    from serve import _agent_cache
 
     mock_checkpointer = MagicMock()
     mock_checkpointer.adelete_thread = AsyncMock(side_effect=Exception("db error"))
+    _agent_cache["checkpointer"] = mock_checkpointer
 
-    original = graph_mod._checkpointer
-    graph_mod._checkpointer = mock_checkpointer
-
-    try:
-        resp = client.post("/reset?thread_id=bad-thread")
-        assert resp.status_code == 500
-        assert resp.json()["status"] == "error"
-    finally:
-        graph_mod._checkpointer = original
+    resp = client.post("/reset?thread_id=bad-thread")
+    assert resp.status_code == 500
+    assert resp.json()["status"] == "error"
 
 
 @patch("serve.set_auth_token")
-@patch("serve.build_agent", new_callable=AsyncMock)
+@patch("serve.build_checkpointer", new_callable=AsyncMock)
+@patch("serve.build_graph", new_callable=AsyncMock)
 @patch("serve.get_tools")
-def test_chat_sets_auth_context(mock_get_tools, mock_build, mock_set_token, client):
+def test_chat_sets_auth_context(
+    mock_get_tools, mock_build, mock_build_cp, mock_set_token, client
+):
     """POST /chat should call set_auth_token before agent invocation."""
     mock_get_tools.return_value = []
 
