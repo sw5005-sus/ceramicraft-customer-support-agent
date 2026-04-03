@@ -9,6 +9,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, ValidationError
 
 from ceramicraft_customer_support_agent.config import get_settings
+from ceramicraft_customer_support_agent.prompts import get_classifier_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -33,25 +34,6 @@ class IntentClassification(BaseModel):
         description="Confidence score between 0.0 and 1.0", ge=0.0, le=1.0
     )
     reasoning: str = Field(description="Brief explanation of the classification")
-
-
-CLASSIFIER_PROMPT = """\
-You are an intent classifier for a customer support system for CeramiCraft, an online ceramic products store.
-
-Classify the user's message into one of these intents:
-
-- **browse**: Looking for products, searching, viewing product details or reviews
-- **cart**: Managing shopping cart (view, add, remove, update items, pricing)
-- **order**: Order management (list orders, view details, confirm receipt, order status)
-- **review**: Writing or managing reviews (create, like, view personal reviews)
-- **account**: Profile or address management (view/update profile, manage addresses)
-- **chitchat**: General conversation, greetings, small talk
-- **escalate**: Complex issues, complaints, requests for human support
-
-Respond with a JSON object containing the intent, confidence score, and brief reasoning.
-
-User message: {message}
-"""
 
 
 def build_classifier() -> Callable:
@@ -85,7 +67,7 @@ def build_classifier() -> Callable:
 
         try:
             # Format the prompt with the user message
-            prompt_content = CLASSIFIER_PROMPT.format(message=user_message)
+            prompt_content = get_classifier_prompt().format(message=user_message)
             result: IntentClassification = llm.invoke(  # ty: ignore[invalid-assignment]
                 [HumanMessage(content=prompt_content)]
             )

@@ -6,11 +6,11 @@ from langchain_core.messages import HumanMessage
 import pytest
 from pydantic import ValidationError
 
+from ceramicraft_customer_support_agent.prompts import CLASSIFIER_PROMPT
 from ceramicraft_customer_support_agent.classifier import (
     Intent,
     IntentClassification,
     build_classifier,
-    CLASSIFIER_PROMPT,
 )
 
 

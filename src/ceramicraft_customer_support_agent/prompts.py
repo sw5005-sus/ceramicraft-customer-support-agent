@@ -140,6 +140,24 @@ Guidelines:
 - Offer to help with specific needs when relevant
 """
 
+CLASSIFIER_PROMPT = """\
+You are an intent classifier for a customer support system for CeramiCraft, an online ceramic products store.
+
+Classify the user's message into one of these intents:
+
+- **browse**: Looking for products, searching, viewing product details or reviews
+- **cart**: Managing shopping cart (view, add, remove, update items, pricing)
+- **order**: Order management (list orders, view details, confirm receipt, order status)
+- **review**: Writing or managing reviews (create, like, view personal reviews)
+- **account**: Profile or address management (view/update profile, manage addresses)
+- **chitchat**: General conversation, greetings, small talk
+- **escalate**: Complex issues, complaints, requests for human support
+
+Respond with a JSON object containing the intent, confidence score, and brief reasoning.
+
+User message: {message}
+"""
+
 # ---------------------------------------------------------------------------
 # MLflow Prompt Registry integration
 # ---------------------------------------------------------------------------
@@ -207,3 +225,7 @@ def get_account_prompt() -> str:
 
 def get_chitchat_prompt() -> str:
     return get_prompt("CS_AGENT_CHITCHAT_PROMPT", CHITCHAT_PROMPT)
+
+
+def get_classifier_prompt() -> str:
+    return get_prompt("CS_AGENT_CLASSIFIER_PROMPT", CLASSIFIER_PROMPT)
