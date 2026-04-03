@@ -56,19 +56,8 @@ def build_chitchat_node() -> Callable:
             if hasattr(msg, "type") and msg.type in _role_map
         ]
 
-        try:
-            response = llm.invoke(full_messages)
-            return {"messages": [{"role": "assistant", "content": response.content}]}
-        except Exception:
-            logger.exception("Chitchat node failed")
-            return {
-                "messages": [
-                    {
-                        "role": "assistant",
-                        "content": "I apologize, but I'm having trouble right now. Could you please try again?",
-                    }
-                ]
-            }
+        response = llm.invoke(full_messages)
+        return {"messages": [{"role": "assistant", "content": response.content}]}
 
     return chitchat_node
 

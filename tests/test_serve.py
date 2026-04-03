@@ -11,18 +11,15 @@ with (
         "ceramicraft_customer_support_agent.mcp_client.get_tools",
         new_callable=AsyncMock,
     ) as _mock_gt,
-    patch("serve.build_checkpointer", new_callable=AsyncMock) as _mock_cp,
+    patch("serve.build_checkpointer", new_callable=AsyncMock),
 ):
     _mock_gt.return_value = []
-    _mock_cp.return_value = MagicMock()
     from serve import app, _agent_cache
 
 
 @pytest.fixture(autouse=True)
 def _clear_cache():
     """Pre-populate agent cache with mocks so lifespan init is not needed."""
-    from unittest.mock import AsyncMock, MagicMock
-
     mock_agent = MagicMock()
     mock_agent.ainvoke = AsyncMock(return_value={"messages": [], "intent": "chitchat"})
     mock_checkpointer = MagicMock()
@@ -175,8 +172,6 @@ def test_chat_fallback_on_empty_content(client):
 
 def test_chat_returns_500_on_exception(client):
     """POST /chat should return 500 on agent failure with thread_id."""
-    from unittest.mock import AsyncMock
-
     _agent_cache["agent"].ainvoke = AsyncMock(side_effect=RuntimeError("boom"))
 
     resp = client.post("/chat", json={"message": "hi"})
@@ -189,8 +184,6 @@ def test_chat_returns_500_on_exception(client):
 
 def test_chat_500_preserves_explicit_thread_id(client):
     """POST /chat 500 should preserve the caller's thread_id."""
-    from unittest.mock import AsyncMock
-
     _agent_cache["agent"].ainvoke = AsyncMock(side_effect=RuntimeError("boom"))
 
     resp = client.post("/chat", json={"message": "hi", "thread_id": "err-thread"})
@@ -244,8 +237,6 @@ def test_reset_clears_memory_saver(client):
 
 def test_reset_returns_500_on_error(client):
     """POST /reset should return 500 if adelete_thread raises."""
-    from unittest.mock import AsyncMock
-
     _agent_cache["checkpointer"].adelete_thread = AsyncMock(
         side_effect=Exception("db error")
     )

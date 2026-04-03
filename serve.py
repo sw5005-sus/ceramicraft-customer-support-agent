@@ -162,9 +162,7 @@ async def chat(body: ChatRequest, request: Request):
 @app.post("/reset", response_model=ResetResponse)
 async def reset(thread_id: str):
     """Reset the conversation history for a given thread."""
-    checkpointer = _agent_cache.get("checkpointer")
-    if checkpointer is None:
-        checkpointer = await build_checkpointer()
+    checkpointer = _agent_cache["checkpointer"]
     try:
         await checkpointer.adelete_thread(thread_id)
     except Exception:

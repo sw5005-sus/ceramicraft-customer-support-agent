@@ -76,9 +76,10 @@ def test_chitchat_node_with_empty_messages(mock_llm_cls):
 
 
 @patch("ceramicraft_customer_support_agent.nodes.ChatOpenAI")
-@patch("ceramicraft_customer_support_agent.nodes.logger")
-def test_chitchat_node_with_llm_error(mock_logger, mock_llm_cls):
-    """Chitchat node should handle LLM errors gracefully."""
+def test_chitchat_node_propagates_llm_error(mock_llm_cls):
+    """Chitchat node should let LLM errors propagate to the caller."""
+    import pytest
+
     mock_llm_instance = MagicMock()
     mock_llm_instance.invoke.side_effect = Exception("API error")
     mock_llm_cls.return_value = mock_llm_instance
@@ -87,11 +88,8 @@ def test_chitchat_node_with_llm_error(mock_logger, mock_llm_cls):
 
     state = {"messages": [{"role": "user", "content": "test"}]}
 
-    result = node(state)
-
-    assert "messages" in result
-    assert "trouble" in result["messages"][0]["content"].lower()
-    mock_logger.exception.assert_called_once_with("Chitchat node failed")
+    with pytest.raises(Exception, match="API error"):
+        node(state)
 
 
 def test_build_escalate_node():
