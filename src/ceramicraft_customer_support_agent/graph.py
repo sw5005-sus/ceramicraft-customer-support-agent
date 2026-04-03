@@ -202,27 +202,15 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
 
     async def subgraph_node(state: AgentState) -> dict:
         """Invoke a domain subgraph with the current state."""
-        try:
-            messages = _sanitize_messages(state.get("messages", []))
-            messages = _trim_messages(messages, get_settings().AGENT_MAX_HISTORY)
+        messages = _sanitize_messages(state.get("messages", []))
+        messages = _trim_messages(messages, get_settings().AGENT_MAX_HISTORY)
 
-            result = await subgraph.ainvoke({"messages": messages})
+        result = await subgraph.ainvoke({"messages": messages})
 
-            new_messages = result.get("messages", [])
-            if len(new_messages) > len(messages):
-                new_messages = new_messages[len(messages) :]
+        new_messages = result.get("messages", [])
+        if len(new_messages) > len(messages):
+            new_messages = new_messages[len(messages) :]
 
-            return {"messages": new_messages}
-
-        except Exception:
-            logger.exception("Subgraph invocation failed")
-            return {
-                "messages": [
-                    {
-                        "role": "assistant",
-                        "content": "I apologize, but I encountered an error processing your request. Please try again.",
-                    }
-                ]
-            }
+        return {"messages": new_messages}
 
     return subgraph_node

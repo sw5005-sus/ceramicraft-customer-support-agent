@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     AGENT_HOST: str = "0.0.0.0"
     AGENT_PORT: int = 8080
 
-    # LangSmith (optional)
+    # LangSmith — LangChain reads LANGCHAIN_API_KEY / LANGCHAIN_TRACING_V2
+    # automatically from the environment; no application code reads these fields.
+    # Declared here only so they are accepted by pydantic-settings without error.
     LANGSMITH_API_KEY: str = ""
     LANGSMITH_PROJECT: str = "ceramicraft-cs-agent"
 
@@ -45,7 +47,7 @@ class Settings(BaseSettings):
         """Assemble PostgreSQL connection URL from individual vars.
 
         Returns an empty string when POSTGRES_HOST is not configured,
-        which causes build_checkpointer() to fall back to MemorySaver.
+        which causes build_checkpointer() to raise RuntimeError.
         """
         if not self.POSTGRES_HOST:
             return ""

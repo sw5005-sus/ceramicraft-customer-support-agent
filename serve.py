@@ -47,16 +47,18 @@ def _extract_bearer_token(request: Request) -> str | None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
-    """Build checkpointer, discover MCP tools and compile graph on startup."""
+    """Build checkpointer, discover MCP tools and compile graph on startup.
+
+    Failure here is fatal — the service cannot handle requests without a
+    working checkpointer and agent.  Log the error and re-raise so the
+    process exits and the container scheduler can restart it.
+    """
     init_mlflow_tracing()
-    try:
-        checkpointer = await build_checkpointer()
-        tools = await get_tools()
-        _agent_cache["agent"] = await build_graph(tools, checkpointer=checkpointer)
-        _agent_cache["checkpointer"] = checkpointer
-        logger.info("Agent pre-warmed with %d tools", len(tools))
-    except Exception:
-        logger.exception("Failed to pre-warm agent (will retry on first request)")
+    checkpointer = await build_checkpointer()
+    tools = await get_tools()
+    _agent_cache["agent"] = await build_graph(tools, checkpointer=checkpointer)
+    _agent_cache["checkpointer"] = checkpointer
+    logger.info("Agent pre-warmed with %d tools", len(tools))
     yield
 
 
@@ -95,6 +97,9 @@ class ResetResponse(BaseModel):
 
 @app.get("/health")
 async def health_check():
+    """Readiness probe: returns 200 only when the agent is initialised."""
+    if "agent" not in _agent_cache:
+        return JSONResponse(status_code=503, content={"status": "starting"})
     return {"status": "ok"}
 
 
@@ -105,13 +110,6 @@ async def chat(body: ChatRequest, request: Request):
     thread_id = body.thread_id or uuid.uuid4().hex
 
     try:
-        # Rebuild if lifespan pre-warm failed
-        if "agent" not in _agent_cache:
-            checkpointer = await build_checkpointer()
-            tools = await get_tools()
-            _agent_cache["agent"] = await build_graph(tools, checkpointer=checkpointer)
-            _agent_cache["checkpointer"] = checkpointer
-
         agent = _agent_cache["agent"]
         set_auth_token(token)
 
