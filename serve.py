@@ -19,7 +19,10 @@ from pydantic import BaseModel, Field
 from ceramicraft_customer_support_agent.agent import build_agent
 from ceramicraft_customer_support_agent.config import get_settings
 from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token
-from ceramicraft_customer_support_agent.mlflow_utils import init_mlflow_tracing
+from ceramicraft_customer_support_agent.mlflow_utils import (
+    init_mlflow_tracing,
+    tag_trace,
+)
 
 # Apply dttb tracebacks for timestamps on exceptions
 dttb.apply()
@@ -120,6 +123,15 @@ async def chat(body: ChatRequest, request: Request):
         response = await agent.ainvoke(
             initial_state,
             config={"configurable": {"thread_id": thread_id}},
+        )
+
+        # Tag the MLflow trace with request-level metadata
+        tag_trace(
+            {
+                "intent": response.get("intent", "unknown"),
+                "authenticated": "true" if token else "false",
+                "thread_id": thread_id,
+            }
         )
     except Exception:
         logger.exception("Agent invocation failed")

@@ -78,3 +78,49 @@ def test_init_with_tracking_uri(monkeypatch):
         except ImportError:
             mu.mlflow = None  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
         mu._MLFLOW_INITIALIZED = False
+
+
+def test_tag_trace_no_mlflow():
+    """tag_trace should be a no-op when mlflow is None."""
+    import ceramicraft_customer_support_agent.mlflow_utils as mu
+
+    original = mu.mlflow
+    mu.mlflow = None  # type: ignore[assignment]
+    try:
+        mu.tag_trace({"intent": "browse"})  # must not raise
+    finally:
+        mu.mlflow = original
+
+
+def test_tag_trace_calls_update(monkeypatch):
+    """tag_trace should call mlflow.update_current_trace with the given tags."""
+    from unittest.mock import MagicMock
+
+    import ceramicraft_customer_support_agent.mlflow_utils as mu
+
+    mock_mlflow = MagicMock()
+    original = mu.mlflow
+    mu.mlflow = mock_mlflow  # type: ignore[assignment]
+    try:
+        mu.tag_trace({"intent": "browse", "authenticated": "true"})
+        mock_mlflow.update_current_trace.assert_called_once_with(
+            tags={"intent": "browse", "authenticated": "true"}
+        )
+    finally:
+        mu.mlflow = original
+
+
+def test_tag_trace_silences_errors():
+    """tag_trace should not propagate exceptions from mlflow."""
+    from unittest.mock import MagicMock
+
+    import ceramicraft_customer_support_agent.mlflow_utils as mu
+
+    mock_mlflow = MagicMock()
+    mock_mlflow.update_current_trace.side_effect = RuntimeError("boom")
+    original = mu.mlflow
+    mu.mlflow = mock_mlflow  # type: ignore[assignment]
+    try:
+        mu.tag_trace({"intent": "order"})  # must not raise
+    finally:
+        mu.mlflow = original

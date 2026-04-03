@@ -54,3 +54,19 @@ def init_mlflow_tracing() -> None:
         logger.warning("Failed to initialize MLflow tracing: %s", exc)
 
     _MLFLOW_INITIALIZED = True
+
+
+def tag_trace(tags: dict) -> None:
+    """Add custom tags to the current MLflow trace.
+
+    Silently no-ops if MLflow is not initialized or no active trace exists.
+
+    Args:
+        tags: Key-value pairs to set on the current trace.
+    """
+    if mlflow is None:
+        return
+    try:
+        mlflow.update_current_trace(tags=tags)
+    except Exception:
+        pass  # tracing must never break the business flow
