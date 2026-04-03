@@ -9,14 +9,14 @@ _最后更新：2026-03-31_
 | 问题 | 决定 |
 |------|------|
 | 对外接口 | FastAPI REST (`POST /chat`, `POST /reset`, `GET /health`) |
-| 对话状态 | PostgreSQL checkpointer（`langgraph-checkpoint-postgres`），fallback 到 MemorySaver |
+| 对话状态 | PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）；POSTGRES_HOST 必填，未配置则启动报错 |
 | 鉴权 | Agent 不验证 token，纯透传给下游 MCP Server（由 MCP Server 统一验证） |
 | 敏感操作 | 支付、充值暂不实现；下单和确认收货需 Guard 确认 |
 | Agent 架构 | LangGraph StateGraph：意图分类 → 条件路由 → 领域子图（ReAct）→ 安全守卫 |
 | LLM | OpenAI GPT-4o |
 | 设计原则 | Prompt Engineering + Context Engineering + 渐进式披露 |
 | MCP Client | PersistentMCPClient 单例（connection 模式），工具列表缓存，每次调用建临时 session |
-| 可观测性 | MLflow tracing（autolog）+ Prompt Registry，graceful degradation |
+| 可观测性 | MLflow tracing（autolog）+ Prompt Registry；tracing 失败不影响业务；prompt fallback 到硬编码默认值 |
 
 ---
 
@@ -62,7 +62,7 @@ MCP Client 使用 **connection 模式**（`session=None, connection=StreamableHt
 
 ### 对话隔离
 
-通过 `thread_id` 隔离多用户对话。每个用户独立的对话历史和上下文。`thread_id` 可选——首次调用不传时服务端自动生成（`uuid4().hex`），response 中始终返回 `thread_id`，后续调用传回即可继续。共享的 `MemorySaver` 在进程内跨请求持久化。
+通过 `thread_id` 隔离多用户对话。每个用户独立的对话历史和上下文。`thread_id` 可选——首次调用不传时服务端自动生成（`uuid4().hex`），response 中始终返回 `thread_id`，后续调用传回即可继续。使用 `AsyncPostgresSaver` 跨进程持久化，重启不丢失对话历史。
 
 ### Token 透传链路
 
@@ -121,13 +121,13 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - 5 个领域子图（ReAct agent，stateless per-invocation），各自绑定领域工具
 - 2 个轻量节点：chitchat（纯 LLM）、escalate（固定消息）
 - Guard 节点：auth 检查 + 敏感操作确认
-- PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）管理对话状态（模块级共享，跨请求持久）；fallback 到 MemorySaver（未配置 postgres 时）
+- PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）管理对话状态（进程级单例，跨请求持久）；POSTGRES_HOST 未配置则启动失败
 - `_trim_messages()` 限制传给子图的历史长度（`AGENT_MAX_HISTORY`，默认 20）
 - `_sanitize_messages()` 过滤 classifier 产生的 orphaned tool_calls
 
 ### 1.4 REST API（对外暴露）
 - `POST /chat`：接收用户消息 + 可选 thread_id，返回 agent 回复 + thread_id
-- `POST /reset`：重置对话历史（调用 `adelete_thread`，支持 MemorySaver 和 PostgreSQL）
+- `POST /reset`：重置对话历史（调用 `AsyncPostgresSaver.adelete_thread`）
 - `GET /health`：健康检查
 - `GET /docs`：Swagger UI（自动生成）
 
@@ -226,7 +226,7 @@ ceramicraft-customer-support-agent/
 │   ├── nodes.py                      # 轻量节点（chitchat + escalate，无工具）
 │   ├── subgraphs.py                  # 领域子图（5 个 stateless ReAct agent builder）
 │   ├── mcp_client.py                 # MCP Client（PersistentMCPClient 单例，connection 模式 + auth interceptor）
-│   ├── mlflow_utils.py               # MLflow tracing init + tag_trace() helper (graceful degradation)
+│   ├── mlflow_utils.py               # MLflow tracing init + tag_trace() helper (tracing failures non-fatal)
 │   └── prompts.py                    # System prompt 模板（主 + 6 个领域）
 ├── tests/
 │   ├── conftest.py

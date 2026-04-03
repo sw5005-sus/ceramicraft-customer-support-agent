@@ -38,7 +38,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
                        │    │                  │  Node   │                    ││
                        │    │                  └─────────┘                    ││
                        │    │                        │                        ││
-                       │    └─ invoke (AsyncPostgresSaver / MemorySaver checkpointer) ││
+                       │    └─ invoke (AsyncPostgresSaver checkpointer) ─────────────────││
                        │                             ▼                        │
                        │                       Response                       │
                        └────────────────────────────────────────────────────────┘
@@ -71,10 +71,9 @@ class AgentState(TypedDict):
 ```
 
 Conversation history is persisted across requests via a shared checkpointer keyed by `thread_id`.
-When `POSTGRES_USER` / `POSTGRES_HOST` is configured, an **AsyncPostgresSaver checkpointer**
-is used (via `langgraph-checkpoint-postgres`), backed by the shared `ceramicraft-postgres` container
-used by log-ms and notification-ms. If postgres is not configured, it falls back to an in-memory
-`MemorySaver` (history is lost on restart).
+Uses **AsyncPostgresSaver** (via `langgraph-checkpoint-postgres`), backed by the shared
+`ceramicraft-postgres` container used by log-ms and notification-ms.
+`POSTGRES_HOST` is required — the agent will fail to start if not configured.
 
 ## REST API
 
@@ -82,7 +81,7 @@ used by log-ms and notification-ms. If postgres is not configured, it falls back
 |----------|--------|-------------|
 | `/chat` | POST | Send a message. Body: `{"message": "...", "thread_id": "..."}`. `thread_id` is optional — omit to start a new conversation; the response always includes `thread_id` to continue. |
 | `/reset` | POST | Reset conversation. Query: `?thread_id=...` |
-| `/health` | GET | Liveness probe |
+| `/health` | GET | Readiness probe — returns 503 until agent is initialised |
 | `/docs` | GET | Swagger UI (auto-generated) |
 
 ## Available Tools (via MCP)
@@ -114,8 +113,6 @@ uv run ty check
 # Test
 uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-missing
 
-# MLflow evaluation (requires agent running + MLFLOW_TRACKING_URI set)
-MLFLOW_TRACKING_URI=http://localhost:5000 uv run python scripts/run_evaluation.py
 ```
 
 ## Configuration
@@ -131,9 +128,9 @@ MLFLOW_TRACKING_URI=http://localhost:5000 uv run python scripts/run_evaluation.p
 | `LANGSMITH_PROJECT` | LangSmith project name | `ceramicraft-cs-agent` |
 | `MLFLOW_TRACKING_URI` | MLflow tracking server URL | *(optional)* |
 | `MLFLOW_EXPERIMENT_NAME` | MLflow experiment name | `ceramicraft-cs-agent` |
-| `POSTGRES_USER` | PostgreSQL user — shared with log-ms / notification-ms | *(optional)* |
-| `POSTGRES_PASSWORD` | PostgreSQL password | *(optional)* |
-| `POSTGRES_HOST` | PostgreSQL host (e.g. `postgres` inside docker network); leave blank to use in-memory | *(optional)* |
+| `POSTGRES_USER` | PostgreSQL user — shared with log-ms / notification-ms | *(required)* |
+| `POSTGRES_PASSWORD` | PostgreSQL password | *(required)* |
+| `POSTGRES_HOST` | PostgreSQL host (e.g. `postgres` inside docker network) | *(required)* |
 | `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `CS_AGENT_DB_NAME` | Database name for conversation checkpoints | `cs_agent_db` |
 | `AGENT_MAX_HISTORY` | Max messages passed to subgraphs (older trimmed to prevent token explosion) | `20` |
