@@ -8,7 +8,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy source code
 COPY src/ src/
-COPY serve.py ./
+COPY serve.py README.md ./
 RUN uv sync --frozen --no-dev
 
 EXPOSE 8080
