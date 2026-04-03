@@ -205,16 +205,11 @@ def test_route_by_intent_logs_routing(mock_logger):
     mock_logger.info.assert_called_once_with("Routing to %s based on intent", "cart")
 
 
-def test_checkpointer_is_shared():
+async def test_checkpointer_is_shared():
     """get_checkpointer should return the same instance on repeated calls."""
-    import asyncio
-
-    async def _run():
-        cp1 = await get_checkpointer()
-        cp2 = await get_checkpointer()
-        assert cp1 is cp2
-
-    asyncio.run(_run())
+    cp1 = await get_checkpointer()
+    cp2 = await get_checkpointer()
+    assert cp1 is cp2
 
 
 # --- _trim_messages tests ---
