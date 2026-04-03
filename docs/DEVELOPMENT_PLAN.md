@@ -8,7 +8,7 @@ _最后更新：2026-03-31_
 
 | 问题 | 决定 |
 |------|------|
-| 对外接口 | FastAPI REST (`POST /chat`, `POST /reset`, `GET /health`) |
+| 对外接口 | FastAPI REST (`POST /chat`, `POST /reset`, `GET /cs-agent/v1/ping`) |
 | 对话状态 | PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）；POSTGRES_HOST 必填，未配置则启动报错 |
 | 鉴权 | Agent 不验证 token，纯透传给下游 MCP Server（由 MCP Server 统一验证） |
 | 敏感操作 | 支付、充值暂不实现；下单和确认收货需 Guard 确认 |
@@ -128,7 +128,7 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 ### 1.4 REST API（对外暴露）
 - `POST /chat`：接收用户消息 + 可选 thread_id，返回 agent 回复 + thread_id
 - `POST /reset`：重置对话历史（调用 `AsyncPostgresSaver.adelete_thread`）
-- `GET /health`：健康检查
+- `GET /cs-agent/v1/ping`：健康检查
 - `GET /docs`：Swagger UI（自动生成）
 
 ### 1.5 Health + Serve
@@ -215,7 +215,7 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 
 ```
 ceramicraft-customer-support-agent/
-├── serve.py                          # FastAPI 入口（POST /chat, /reset, GET /health）
+├── serve.py                          # FastAPI 入口（POST /chat, /reset, GET /cs-agent/v1/ping）
 ├── src/ceramicraft_customer_support_agent/
 │   ├── __init__.py
 │   ├── config.py                     # 配置（pydantic-settings）

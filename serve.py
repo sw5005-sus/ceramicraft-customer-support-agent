@@ -97,8 +97,8 @@ class ResetResponse(BaseModel):
 # ---------- endpoints ----------
 
 
-@app.get("/health")
-async def health_check():
+@app.get("/cs-agent/v1/ping")
+async def ping():
     """Readiness probe: returns 200 only when the agent is initialised."""
     if "agent" not in _agent_cache:
         return JSONResponse(status_code=503, content={"status": "starting"})

@@ -38,16 +38,16 @@ def client():
 
 
 def test_health_check(client):
-    """GET /health should return ok when agent is initialised."""
-    resp = client.get("/health")
+    """GET /cs-agent/v1/ping should return ok when agent is initialised."""
+    resp = client.get("/cs-agent/v1/ping")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
 
 
 def test_health_check_not_ready(client):
-    """GET /health should return 503 when agent is not yet initialised."""
+    """GET /cs-agent/v1/ping should return 503 when agent is not yet initialised."""
     _agent_cache.clear()
-    resp = client.get("/health")
+    resp = client.get("/cs-agent/v1/ping")
     assert resp.status_code == 503
     assert resp.json()["status"] == "starting"
 

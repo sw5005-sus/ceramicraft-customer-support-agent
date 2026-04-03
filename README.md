@@ -81,7 +81,7 @@ Uses **AsyncPostgresSaver** (via `langgraph-checkpoint-postgres`), backed by the
 |----------|--------|-------------|
 | `/chat` | POST | Send a message. Body: `{"message": "...", "thread_id": "..."}`. `thread_id` is optional — omit to start a new conversation; the response always includes `thread_id` to continue. |
 | `/reset` | POST | Reset conversation. Query: `?thread_id=...` |
-| `/health` | GET | Readiness probe — returns 503 until agent is initialised |
+| `/cs-agent/v1/ping` | GET | Readiness probe — returns 503 until agent is initialised |
 | `/docs` | GET | Swagger UI (auto-generated) |
 
 ## Available Tools (via MCP)
