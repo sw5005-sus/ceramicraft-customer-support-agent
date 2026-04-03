@@ -6,6 +6,7 @@ internal ``asyncio.create_task()`` runs inside FastMCP's anyio context.
 """
 
 import logging
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -30,6 +31,7 @@ dttb.apply()
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
 
