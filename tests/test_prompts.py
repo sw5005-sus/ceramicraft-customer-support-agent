@@ -249,24 +249,18 @@ def test_get_prompt_fallback_no_mlflow_uri():
     assert result == "my fallback"
 
 
-def test_get_prompt_fallback_on_import_error():
-    """get_prompt should return fallback when mlflow is not importable."""
+def test_get_prompt_fallback_on_mlflow_error():
+    """get_prompt should return fallback when MLflow raises (e.g. prompt not found)."""
     _clear_prompt_cache()
-    import builtins
-
-    real_import = builtins.__import__
-
-    def mock_import(name, *args, **kwargs):
-        if name == "mlflow":
-            raise ImportError("mlflow not installed")
-        return real_import(name, *args, **kwargs)
-
     with (
         patch(
             "ceramicraft_customer_support_agent.prompts.get_settings",
             return_value=_mock_settings_with_mlflow(),
         ),
-        patch.object(builtins, "__import__", side_effect=mock_import),
+        patch(
+            "ceramicraft_customer_support_agent.prompts.mlflow.MlflowClient",
+            side_effect=Exception("prompt not found"),
+        ),
     ):
         result = get_prompt("SYSTEM_PROMPT", "fallback text")
     assert result == "fallback text"

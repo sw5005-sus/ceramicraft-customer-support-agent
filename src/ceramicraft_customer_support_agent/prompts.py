@@ -2,6 +2,8 @@
 
 import logging as _logging
 
+import mlflow
+
 from ceramicraft_customer_support_agent.config import get_settings
 
 _logger = _logging.getLogger(__name__)
@@ -167,20 +169,18 @@ def get_prompt(name: str, fallback: str) -> str:
     """Load a prompt from MLflow prompt registry, falling back to the provided default.
 
     Prompts are cached in-process so MLflow is hit at most once per prompt name.
-    Any failure (mlflow not installed, network error, prompt not found) returns
-    the fallback silently.
+    Falls back to the hardcoded default on any error (network, prompt not found,
+    MLFLOW_TRACKING_URI not set).
     """
     if name in _prompt_cache:
         return _prompt_cache[name]
 
+    tracking_uri = get_settings().MLFLOW_TRACKING_URI
+    if not tracking_uri:
+        _prompt_cache[name] = fallback
+        return fallback
+
     try:
-        import mlflow  # noqa: PLC0415
-
-        tracking_uri = get_settings().MLFLOW_TRACKING_URI
-        if not tracking_uri:
-            _prompt_cache[name] = fallback
-            return fallback
-
         client = mlflow.MlflowClient(tracking_uri=tracking_uri)
         prompt_obj = client.get_prompt(f"{name}@production")
         template = prompt_obj.template  # type: ignore[union-attr]

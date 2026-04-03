@@ -2,6 +2,8 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from ceramicraft_customer_support_agent.graph import (
     AgentState,
     _trim_messages,
@@ -258,35 +260,32 @@ def test_trim_messages_exact_limit():
 # --- build_checkpointer tests ---
 
 
-@patch("ceramicraft_customer_support_agent.config.get_settings")
-async def test_build_checkpointer_no_postgres_host(mock_settings):
-    """DATABASE_URL empty (POSTGRES_HOST unset) should return MemorySaver."""
-    from langgraph.checkpoint.memory import MemorySaver
-
+@patch("ceramicraft_customer_support_agent.graph.get_settings")
+async def test_build_checkpointer_no_postgres_host_raises(mock_settings):
+    """DATABASE_URL empty (POSTGRES_HOST unset) should raise RuntimeError."""
     mock_cfg = MagicMock()
     mock_cfg.DATABASE_URL = ""
     mock_settings.return_value = mock_cfg
 
-    result = await build_checkpointer()
+    with pytest.raises(RuntimeError, match="PostgreSQL is not configured"):
+        await build_checkpointer()
 
-    assert isinstance(result, MemorySaver)
 
-
-@patch("ceramicraft_customer_support_agent.config.get_settings")
-async def test_build_checkpointer_fallback_on_error(mock_settings):
-    """PostgreSQL connection failure should fall back to MemorySaver."""
-    from langgraph.checkpoint.memory import MemorySaver
-
+@patch("ceramicraft_customer_support_agent.graph.get_settings")
+async def test_build_checkpointer_propagates_connection_error(mock_settings):
+    """PostgreSQL connection failure should propagate, not silently fall back."""
     mock_cfg = MagicMock()
     mock_cfg.DATABASE_URL = "postgresql+psycopg://bad:pw@localhost/nodb"
     mock_settings.return_value = mock_cfg
 
-    psycopg_pool_mock = MagicMock()
-    psycopg_pool_mock.AsyncConnectionPool.side_effect = Exception("connection refused")
-    with patch.dict("sys.modules", {"psycopg_pool": psycopg_pool_mock}):
-        result = await build_checkpointer()
-
-    assert isinstance(result, MemorySaver)
+    with (
+        patch(
+            "ceramicraft_customer_support_agent.graph.AsyncConnectionPool",
+            side_effect=Exception("connection refused"),
+        ),
+        pytest.raises(Exception, match="connection refused"),
+    ):
+        await build_checkpointer()
 
 
 # --- Settings.DATABASE_URL property tests ---

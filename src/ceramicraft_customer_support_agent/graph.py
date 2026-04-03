@@ -6,9 +6,11 @@ from typing import Any, TypedDict
 
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import BaseTool
-from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import StateGraph
 from langgraph.graph.message import add_messages
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 from typing_extensions import Annotated
 
 from ceramicraft_customer_support_agent.classifier import build_classifier
@@ -29,51 +31,44 @@ from ceramicraft_customer_support_agent.subgraphs import (
 logger = logging.getLogger(__name__)
 
 
-async def build_checkpointer() -> Any:
-    """Build a checkpointer: AsyncPostgresSaver if configured, MemorySaver otherwise.
+async def build_checkpointer() -> AsyncPostgresSaver:
+    """Build an AsyncPostgresSaver backed by an async connection pool.
 
-    Uses AsyncPostgresSaver + AsyncConnectionPool so the checkpointer is
-    compatible with the async agent invocation path (ainvoke / astream).
+    Uses AsyncPostgresSaver + AsyncConnectionPool for compatibility with
+    the async agent invocation path (ainvoke / astream).
+
+    Raises:
+        RuntimeError: If DATABASE_URL is not configured.
+        Exception: Any connection or setup error is propagated to the caller.
     """
     settings = get_settings()
 
-    if settings.DATABASE_URL:
-        try:
-            from psycopg.rows import dict_row
-            from psycopg_pool import AsyncConnectionPool
+    if not settings.DATABASE_URL:
+        raise RuntimeError(
+            "PostgreSQL is not configured. Set POSTGRES_HOST, POSTGRES_USER, "
+            "POSTGRES_PASSWORD, POSTGRES_PORT, and CS_AGENT_DB_NAME."
+        )
 
-            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    # psycopg_pool expects a libpq DSN, not a SQLAlchemy URL.
+    conninfo = settings.DATABASE_URL.replace(
+        "postgresql+psycopg://", "postgresql://", 1
+    )
 
-            # psycopg_pool expects libpq DSN, not SQLAlchemy URL.
-            conninfo = settings.DATABASE_URL.replace(
-                "postgresql+psycopg://", "postgresql://", 1
-            )
+    async def _configure(conn: Any) -> None:
+        conn.row_factory = dict_row
 
-            async def _configure(conn: Any) -> None:
-                conn.row_factory = dict_row
-
-            pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
-                conninfo=conninfo,
-                max_size=10,
-                kwargs={"autocommit": True},
-                configure=_configure,
-                open=False,
-            )
-            await pool.open(wait=True)
-            checkpointer = AsyncPostgresSaver(pool)
-            await checkpointer.setup()
-            logger.info(
-                "Using async PostgreSQL checkpointer: %s", settings.POSTGRES_HOST
-            )
-            return checkpointer
-        except Exception as exc:
-            logger.warning(
-                "Failed to init PostgreSQL checkpointer, falling back to MemorySaver: %s",
-                exc,
-            )
-
-    logger.info("Using in-memory checkpointer (MemorySaver)")
-    return MemorySaver()
+    pool: AsyncConnectionPool[Any] = AsyncConnectionPool(
+        conninfo=conninfo,
+        max_size=10,
+        kwargs={"autocommit": True},
+        configure=_configure,
+        open=False,
+    )
+    await pool.open(wait=True)
+    checkpointer = AsyncPostgresSaver(pool)
+    await checkpointer.setup()
+    logger.info("PostgreSQL checkpointer ready: %s", settings.POSTGRES_HOST)
+    return checkpointer
 
 
 class AgentState(TypedDict):

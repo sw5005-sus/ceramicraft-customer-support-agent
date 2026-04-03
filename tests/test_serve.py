@@ -239,7 +239,15 @@ def test_chat_500_preserves_explicit_thread_id(mock_get_tools, client):
 
 
 def test_reset_returns_ok(client):
-    """POST /reset should return ok status."""
+    """POST /reset should return ok status when checkpointer is cached."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from serve import _agent_cache
+
+    mock_checkpointer = MagicMock()
+    mock_checkpointer.adelete_thread = AsyncMock()
+    _agent_cache["checkpointer"] = mock_checkpointer
+
     resp = client.post("/reset?thread_id=my-thread")
 
     assert resp.status_code == 200
