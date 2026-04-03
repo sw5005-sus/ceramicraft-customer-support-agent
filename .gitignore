@@ -25,3 +25,5 @@ htmlcov/
 -e 
 # Local-only scripts
 scripts/
+.env.bak
+.env.local

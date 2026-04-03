@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable, Sequence
 from typing import Any, TypedDict
 
-from langchain_core.messages import AIMessage, ToolMessage
+from langchain_core.messages import AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.graph import StateGraph
@@ -205,11 +205,39 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
         messages = _sanitize_messages(state.get("messages", []))
         messages = _trim_messages(messages, get_settings().AGENT_MAX_HISTORY)
 
-        result = await subgraph.ainvoke({"messages": messages})
+        # Inject auth context so the LLM knows whether to attempt
+        # authenticated operations or ask the user to log in.
+        auth_token = state.get("auth_token")
+        if auth_token:
+            auth_hint = SystemMessage(
+                content=(
+                    "The user is authenticated. You may call tools that "
+                    "require login on their behalf without asking them to "
+                    "log in."
+                )
+            )
+            messages = [auth_hint, *messages]
+        try:
+            result = await subgraph.ainvoke({"messages": messages})
+        except Exception:
+            logger.exception("Subgraph '%s' failed", domain)
+            return {
+                "messages": [
+                    {
+                        "role": "assistant",
+                        "content": (
+                            "Sorry, something went wrong while processing your "
+                            "request. Please try again or rephrase your question."
+                        ),
+                    }
+                ]
+            }
 
         new_messages = result.get("messages", [])
-        if len(new_messages) > len(messages):
-            new_messages = new_messages[len(messages) :]
+        # Strip the injected auth hint when counting original messages.
+        orig_count = len(messages) - (1 if auth_token else 0)
+        if len(new_messages) > orig_count:
+            new_messages = new_messages[orig_count:]
 
         return {"messages": new_messages}
 
