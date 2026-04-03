@@ -109,7 +109,7 @@ uv run ruff check .
 uv run ruff format .
 
 # Type check
-uv run ty check src/
+uv run ty check
 
 # Test
 uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-missing
@@ -135,5 +135,6 @@ MLFLOW_TRACKING_URI=http://localhost:5000 uv run python scripts/run_evaluation.p
 | `POSTGRES_PASSWORD` | PostgreSQL password | *(optional)* |
 | `POSTGRES_HOST` | PostgreSQL host (e.g. `postgres` inside docker network) | *(optional)* |
 | `POSTGRES_PORT` | PostgreSQL port | `5432` |
+| `CS_AGENT_DB_NAME` | Database name for conversation checkpoints | `cs_agent_db` |
 | `POSTGRES_URL` | Explicit connection URL override (takes priority over individual vars) | *(optional)* |
 | `AGENT_MAX_HISTORY` | Max messages passed to subgraphs (older trimmed to prevent token explosion) | `20` |

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     POSTGRES_PASSWORD: str = ""
     POSTGRES_HOST: str = ""
     POSTGRES_PORT: int = 5432
+    CS_AGENT_DB_NAME: str = "cs_agent_db"
 
     # Optional: explicit connection URL that overrides the individual variables above.
     # Format: postgresql+psycopg://user:password@host:port/dbname
@@ -59,7 +60,7 @@ class Settings(BaseSettings):
         if self.POSTGRES_USER and self.POSTGRES_HOST:
             return (
                 f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/cs_agent_db"
+                f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.CS_AGENT_DB_NAME}"
             )
         return ""
 

@@ -290,6 +290,7 @@ def test_settings_postgres_url_assembled():
         POSTGRES_PASSWORD="ceramicraft123",
         POSTGRES_HOST="postgres",
         POSTGRES_PORT=5432,
+        CS_AGENT_DB_NAME="cs_agent_db",
     )
     assert s.postgres_url == (
         "postgresql+psycopg://ceramicraft:ceramicraft123@postgres:5432/cs_agent_db"

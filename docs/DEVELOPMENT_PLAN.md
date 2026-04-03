@@ -9,7 +9,7 @@ _最后更新：2026-03-31_
 | 问题 | 决定 |
 |------|------|
 | 对外接口 | FastAPI REST (`POST /chat`, `POST /reset`, `GET /health`) |
-| 对话状态 | 先 MemorySaver（内存），上线前切 PostgreSQL |
+| 对话状态 | PostgreSQL checkpointer（`langgraph-checkpoint-postgres`），fallback 到 MemorySaver |
 | 鉴权 | Agent 不验证 token，纯透传给下游 MCP Server（由 MCP Server 统一验证） |
 | 敏感操作 | 支付、充值暂不实现；下单和确认收货需 Guard 确认 |
 | Agent 架构 | LangGraph StateGraph：意图分类 → 条件路由 → 领域子图（ReAct）→ 安全守卫 |
@@ -121,12 +121,13 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - 5 个领域子图（ReAct agent，stateless per-invocation），各自绑定领域工具
 - 2 个轻量节点：chitchat（纯 LLM）、escalate（固定消息）
 - Guard 节点：auth 检查 + 敏感操作确认
-- MemorySaver 管理对话状态（模块级共享，跨请求持久）
+- PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）管理对话状态（模块级共享，跨请求持久）；fallback 到 MemorySaver（未配置 postgres 时）
+- `_trim_messages()` 限制传给子图的历史长度（`AGENT_MAX_HISTORY`，默认 20）
 - `_sanitize_messages()` 过滤 classifier 产生的 orphaned tool_calls
 
 ### 1.4 REST API（对外暴露）
 - `POST /chat`：接收用户消息 + 可选 thread_id，返回 agent 回复 + thread_id
-- `POST /reset`：重置对话历史（API 兼容，待持久化后实现）
+- `POST /reset`：重置对话历史（调用 `adelete_thread`，支持 MemorySaver 和 PostgreSQL）
 - `GET /health`：健康检查
 - `GET /docs`：Swagger UI（自动生成）
 
@@ -191,9 +192,11 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - Helm chart + argocd-deploy 配置
 - LangSmith tracing 集成
 
-### 3.4 状态持久化
-- 切换到 `langgraph-checkpoint-postgres`
-- Vault 注入 PG 凭证
+### 3.4 状态持久化 ✅
+- ~~切换到 `langgraph-checkpoint-postgres`~~ — **已完成**
+- `POSTGRES_USER/PASSWORD/HOST/PORT` 接入共享 `ceramicraft-postgres`（与 log-ms / notification-ms 一致）
+- `cs_agent_db` 由 local-stack postgres init script 自动创建
+- Vault 注入 PG 凭证（TODO）
 
 ### 3.5 Token 端到端透传
 - 将 auth_token 从 AgentState 注入到每次 MCP tool 调用的 headers 中
