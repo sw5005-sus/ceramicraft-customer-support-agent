@@ -22,3 +22,6 @@ htmlcov/
 .DS_Store
 *.log
 .ruff_cache/
+-e 
+# Local-only scripts
+scripts/
