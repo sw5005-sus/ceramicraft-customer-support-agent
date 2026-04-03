@@ -11,6 +11,7 @@ from langgraph.graph.message import add_messages
 from typing_extensions import Annotated
 
 from ceramicraft_customer_support_agent.classifier import build_classifier
+from ceramicraft_customer_support_agent.config import get_settings
 from ceramicraft_customer_support_agent.guard import build_guard
 from ceramicraft_customer_support_agent.nodes import (
     build_chitchat_node,
@@ -132,13 +133,17 @@ async def build_graph(tools: Sequence[BaseTool]) -> Any:
     chitchat_node = build_chitchat_node()
     escalate_node = build_escalate_node()
 
-    # Add nodes to graph
     graph.add_node("classifier", classifier)
-    graph.add_node("browse", _wrap_subgraph(browse_agent, "browse"))
-    graph.add_node("cart", _wrap_subgraph(cart_agent, "cart"))
-    graph.add_node("order", _wrap_subgraph(order_agent, "order"))
-    graph.add_node("review", _wrap_subgraph(review_agent, "review"))
-    graph.add_node("account", _wrap_subgraph(account_agent, "account"))
+    domain_subgraphs = [
+        ("browse", browse_agent),
+        ("cart", cart_agent),
+        ("order", order_agent),
+        ("review", review_agent),
+        ("account", account_agent),
+    ]
+    for name, agent in domain_subgraphs:
+        graph.add_node(name, _wrap_subgraph(agent, name))
+
     graph.add_node("chitchat", chitchat_node)
     graph.add_node("escalate", escalate_node)
     graph.add_node("guard", guard)
@@ -147,31 +152,16 @@ async def build_graph(tools: Sequence[BaseTool]) -> Any:
     graph.set_entry_point("classifier")
 
     # Add routing edges from classifier
+    domain_names = [name for name, _ in domain_subgraphs]
     graph.add_conditional_edges(
         "classifier",
         route_by_intent,
-        {
-            "browse": "browse",
-            "cart": "cart",
-            "order": "order",
-            "review": "review",
-            "account": "account",
-            "chitchat": "chitchat",
-            "escalate": "escalate",
-        },
+        {name: name for name in [*domain_names, "chitchat", "escalate"]},
     )
 
-    # All domain nodes go to guard
-    for domain in [
-        "browse",
-        "cart",
-        "order",
-        "review",
-        "account",
-        "chitchat",
-        "escalate",
-    ]:
-        graph.add_edge(domain, "guard")
+    # All domain nodes route through guard
+    for name in [*domain_names, "chitchat", "escalate"]:
+        graph.add_edge(name, "guard")
 
     # Guard is the end
     graph.set_finish_point("guard")
@@ -182,7 +172,7 @@ async def build_graph(tools: Sequence[BaseTool]) -> Any:
     logger.info(
         "Graph built with %d tools across %d domain subgraphs",
         len(tools),
-        5,  # browse, cart, order, review, account
+        len(domain_subgraphs),
     )
 
     return compiled
@@ -256,8 +246,6 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
         """Invoke a domain subgraph with the current state."""
         try:
             messages = _sanitize_messages(state.get("messages", []))
-            from ceramicraft_customer_support_agent.config import get_settings
-
             messages = _trim_messages(messages, get_settings().AGENT_MAX_HISTORY)
 
             result = await subgraph.ainvoke(

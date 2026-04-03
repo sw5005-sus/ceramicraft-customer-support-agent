@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from ceramicraft_customer_support_agent.agent import build_agent
 from ceramicraft_customer_support_agent.config import get_settings
+from ceramicraft_customer_support_agent.graph import get_checkpointer
 from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token
 from ceramicraft_customer_support_agent.mlflow_utils import (
     init_mlflow_tracing,
@@ -163,8 +164,6 @@ async def chat(body: ChatRequest, request: Request):
 @app.post("/reset", response_model=ResetResponse)
 async def reset(thread_id: str):
     """Reset the conversation history for a given thread."""
-    from ceramicraft_customer_support_agent.graph import get_checkpointer
-
     checkpointer = await get_checkpointer()
     try:
         await checkpointer.adelete_thread(thread_id)

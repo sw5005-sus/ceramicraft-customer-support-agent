@@ -1,7 +1,8 @@
 """MLflow tracing utilities for the Customer Support Agent."""
 
 import logging
-import os
+
+from ceramicraft_customer_support_agent.config import get_settings
 
 try:
     import mlflow
@@ -25,18 +26,15 @@ def init_mlflow_tracing() -> None:
         _MLFLOW_INITIALIZED = True
         return
 
-    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
-    if not tracking_uri:
+    settings = get_settings()
+    if not settings.MLFLOW_TRACKING_URI:
         logger.info("MLFLOW_TRACKING_URI not set; MLflow tracing disabled.")
         _MLFLOW_INITIALIZED = True
         return
 
     try:
-        experiment_name = os.environ.get(
-            "MLFLOW_EXPERIMENT_NAME", "ceramicraft-cs-agent"
-        )
-        mlflow.set_tracking_uri(tracking_uri)
-        mlflow.set_experiment(experiment_name)
+        mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
+        mlflow.set_experiment(settings.MLFLOW_EXPERIMENT_NAME)
 
         # LangGraph tracing via LangChain autologging.
         if hasattr(mlflow, "langchain") and hasattr(mlflow.langchain, "autolog"):
@@ -47,8 +45,8 @@ def init_mlflow_tracing() -> None:
 
         logger.info(
             "MLflow tracing initialized. tracking_uri=%s experiment=%s",
-            tracking_uri,
-            experiment_name,
+            settings.MLFLOW_TRACKING_URI,
+            settings.MLFLOW_EXPERIMENT_NAME,
         )
     except Exception as exc:  # pragma: no cover - tracing must not break business flow
         logger.warning("Failed to initialize MLflow tracing: %s", exc)

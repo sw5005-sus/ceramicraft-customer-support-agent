@@ -1,6 +1,6 @@
 """Tests for MLflow tracing utilities."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 def _reset_init_flag():
@@ -10,22 +10,29 @@ def _reset_init_flag():
     mu._MLFLOW_INITIALIZED = False
 
 
-def test_init_no_tracking_uri(monkeypatch):
+def _mock_settings(tracking_uri: str = "", experiment: str = "ceramicraft-cs-agent"):
+    """Return a MagicMock Settings with MLflow fields populated."""
+    cfg = MagicMock()
+    cfg.MLFLOW_TRACKING_URI = tracking_uri
+    cfg.MLFLOW_EXPERIMENT_NAME = experiment
+    return cfg
+
+
+def test_init_no_tracking_uri():
     """Should skip silently when MLFLOW_TRACKING_URI is not set."""
-    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     _reset_init_flag()
 
-    from ceramicraft_customer_support_agent.mlflow_utils import init_mlflow_tracing
+    with patch(
+        "ceramicraft_customer_support_agent.mlflow_utils.get_settings",
+        return_value=_mock_settings(tracking_uri=""),
+    ):
+        from ceramicraft_customer_support_agent.mlflow_utils import init_mlflow_tracing
 
-    # Should not raise
-    init_mlflow_tracing()
+        init_mlflow_tracing()  # should not raise
 
 
-def test_init_mlflow_import_fails(monkeypatch):
+def test_init_mlflow_import_fails():
     """Should skip gracefully when mlflow is not installed."""
-    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
-
-    # Patch the module-level mlflow to None
     import ceramicraft_customer_support_agent.mlflow_utils as mu
 
     mu._MLFLOW_INITIALIZED = False
@@ -39,22 +46,22 @@ def test_init_mlflow_import_fails(monkeypatch):
         mu._MLFLOW_INITIALIZED = False
 
 
-def test_init_idempotent(monkeypatch):
+def test_init_idempotent():
     """Calling init_mlflow_tracing() twice should be safe."""
-    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     _reset_init_flag()
 
-    from ceramicraft_customer_support_agent.mlflow_utils import init_mlflow_tracing
+    with patch(
+        "ceramicraft_customer_support_agent.mlflow_utils.get_settings",
+        return_value=_mock_settings(tracking_uri=""),
+    ):
+        from ceramicraft_customer_support_agent.mlflow_utils import init_mlflow_tracing
 
-    init_mlflow_tracing()
-    init_mlflow_tracing()  # second call should be no-op
+        init_mlflow_tracing()
+        init_mlflow_tracing()  # second call should be no-op
 
 
-def test_init_with_tracking_uri(monkeypatch):
+def test_init_with_tracking_uri():
     """Should call mlflow setup when MLFLOW_TRACKING_URI is set."""
-    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
-    monkeypatch.setenv("MLFLOW_EXPERIMENT_NAME", "test-experiment")
-
     import ceramicraft_customer_support_agent.mlflow_utils as mu
 
     mu._MLFLOW_INITIALIZED = False
@@ -65,12 +72,19 @@ def test_init_with_tracking_uri(monkeypatch):
     mu.mlflow = mock_mlflow  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
 
     try:
-        mu.init_mlflow_tracing()
+        with patch(
+            "ceramicraft_customer_support_agent.mlflow_utils.get_settings",
+            return_value=_mock_settings(
+                tracking_uri="http://localhost:5000",
+                experiment="test-experiment",
+            ),
+        ):
+            mu.init_mlflow_tracing()
+
         mock_mlflow.set_tracking_uri.assert_called_once_with("http://localhost:5000")
         mock_mlflow.set_experiment.assert_called_once_with("test-experiment")
         mock_mlflow.langchain.autolog.assert_called_once()
     finally:
-        # Restore real mlflow (or None if not installed)
         try:
             import mlflow as real_mlflow
 
@@ -82,9 +96,9 @@ def test_init_with_tracking_uri(monkeypatch):
 
 def test_tag_trace_no_mlflow():
     """tag_trace should be a no-op when mlflow is None."""
-    import ceramicraft_customer_support_agent.mlflow_utils as mu
-
     from typing import Any, cast
+
+    import ceramicraft_customer_support_agent.mlflow_utils as mu
 
     original = mu.mlflow
     mu.mlflow = cast(Any, None)
@@ -94,10 +108,9 @@ def test_tag_trace_no_mlflow():
         mu.mlflow = original
 
 
-def test_tag_trace_calls_update(monkeypatch):
+def test_tag_trace_calls_update():
     """tag_trace should call mlflow.update_current_trace with the given tags."""
     from typing import Any, cast
-    from unittest.mock import MagicMock
 
     import ceramicraft_customer_support_agent.mlflow_utils as mu
 
@@ -116,7 +129,6 @@ def test_tag_trace_calls_update(monkeypatch):
 def test_tag_trace_silences_errors():
     """tag_trace should not propagate exceptions from mlflow."""
     from typing import Any, cast
-    from unittest.mock import MagicMock
 
     import ceramicraft_customer_support_agent.mlflow_utils as mu
 
