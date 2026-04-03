@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Callable, Sequence
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict
 
 from langchain_core.tools import BaseTool
 from langgraph.checkpoint.memory import MemorySaver
@@ -49,14 +49,18 @@ def build_checkpointer() -> Any:
             if conninfo.startswith("postgresql+psycopg://"):
                 conninfo = conninfo.replace("postgresql+psycopg://", "postgresql://", 1)
 
-            pool = ConnectionPool(
+            # Use configure callback to set row_factory so psycopg_pool
+            # returns Connection[DictRow] matching PostgresSaver's type requirement.
+            def _configure(conn: Any) -> None:
+                conn.row_factory = dict_row
+
+            pool: ConnectionPool[Any] = ConnectionPool(
                 conninfo=conninfo,
                 max_size=10,
-                kwargs=cast(
-                    dict[str, Any], {"autocommit": True, "row_factory": dict_row}
-                ),
+                kwargs={"autocommit": True},
+                configure=_configure,
             )
-            checkpointer = PostgresSaver(cast(Any, pool))
+            checkpointer = PostgresSaver(pool)
             checkpointer.setup()  # creates tables if not exists
             logger.info("Using PostgreSQL checkpointer: %s", settings.POSTGRES_URL)
             return checkpointer

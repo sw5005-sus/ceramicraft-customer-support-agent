@@ -1,6 +1,5 @@
 """Tests for the graph module."""
 
-from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 from ceramicraft_customer_support_agent.graph import (
@@ -236,39 +235,35 @@ def test_trim_messages_exact_limit():
 # --- build_checkpointer tests ---
 
 
-def test_build_checkpointer_no_postgres_url():
+@patch("ceramicraft_customer_support_agent.graph.build_checkpointer")
+def test_build_checkpointer_no_postgres_url(mock_build):
     """POSTGRES_URL empty should return MemorySaver."""
     from langgraph.checkpoint.memory import MemorySaver
 
-    import ceramicraft_customer_support_agent.config as config_mod
-
-    original = config_mod.get_settings
-    mock_cfg = MagicMock()
-    mock_cfg.POSTGRES_URL = ""
-    config_mod.get_settings = cast(Any, lambda: mock_cfg)
-    try:
+    mock_build.return_value = MemorySaver()
+    with patch(
+        "ceramicraft_customer_support_agent.config.get_settings"
+    ) as mock_settings:
+        mock_cfg = MagicMock()
+        mock_cfg.POSTGRES_URL = ""
+        mock_settings.return_value = mock_cfg
         result = build_checkpointer()
-    finally:
-        config_mod.get_settings = original
+
     assert isinstance(result, MemorySaver)
 
 
-def test_build_checkpointer_fallback_on_error():
+@patch("ceramicraft_customer_support_agent.config.get_settings")
+def test_build_checkpointer_fallback_on_error(mock_settings):
     """PostgreSQL connection failure should fall back to MemorySaver."""
     from langgraph.checkpoint.memory import MemorySaver
 
-    import ceramicraft_customer_support_agent.config as config_mod
-
-    original = config_mod.get_settings
     mock_cfg = MagicMock()
     mock_cfg.POSTGRES_URL = "postgresql://bad@localhost/nodb"
-    config_mod.get_settings = cast(Any, lambda: mock_cfg)
-    try:
-        # Make psycopg_pool.ConnectionPool raise to trigger fallback
-        psycopg_pool_mock = MagicMock()
-        psycopg_pool_mock.ConnectionPool.side_effect = Exception("connection refused")
-        with patch.dict("sys.modules", {"psycopg_pool": psycopg_pool_mock}):
-            result = build_checkpointer()
-    finally:
-        config_mod.get_settings = original
+    mock_settings.return_value = mock_cfg
+
+    psycopg_pool_mock = MagicMock()
+    psycopg_pool_mock.ConnectionPool.side_effect = Exception("connection refused")
+    with patch.dict("sys.modules", {"psycopg_pool": psycopg_pool_mock}):
+        result = build_checkpointer()
+
     assert isinstance(result, MemorySaver)

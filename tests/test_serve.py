@@ -254,33 +254,23 @@ def test_reset_requires_thread_id(client):
 
 
 def test_reset_clears_memory_saver(client):
-    """POST /reset should remove MemorySaver entries for the given thread."""
-    from langgraph.checkpoint.memory import MemorySaver
+    """POST /reset should call adelete_thread on the checkpointer."""
+    from unittest.mock import AsyncMock, MagicMock
 
     import ceramicraft_customer_support_agent.graph as graph_mod
 
-    # Ensure checkpointer is a MemorySaver and inject test data
-    # Cast storage to Any to bypass ty's strict defaultdict key type checks
-    from typing import Any, cast
-
-    mem = MemorySaver()
-    storage = cast(Any, mem.storage)
-    thread_id = "test-reset-thread"
-    storage[thread_id, "", "cp1"] = b"data"
-    storage[thread_id, "", "cp2"] = b"data2"
-    storage["other-thread", "", "cp1"] = b"keep"
+    mock_checkpointer = MagicMock()
+    mock_checkpointer.adelete_thread = AsyncMock()
 
     original = graph_mod._checkpointer
-    graph_mod._checkpointer = mem
+    graph_mod._checkpointer = mock_checkpointer
 
     try:
+        thread_id = "test-reset-thread"
         resp = client.post(f"/reset?thread_id={thread_id}")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
-        # Thread entries should be gone
-        assert all(k[0] != thread_id for k in storage)
-        # Other thread entries should remain
-        assert ("other-thread", "", "cp1") in storage
+        mock_checkpointer.adelete_thread.assert_called_once_with(thread_id)
     finally:
         graph_mod._checkpointer = original
 
