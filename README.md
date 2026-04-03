@@ -38,7 +38,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
                        │    │                  │  Node   │                    ││
                        │    │                  └─────────┘                    ││
                        │    │                        │                        ││
-                       │    └─ invoke (PostgresSaver / MemorySaver checkpointer)     ││
+                       │    └─ invoke (AsyncPostgresSaver / MemorySaver checkpointer) ││
                        │                             ▼                        │
                        │                       Response                       │
                        └────────────────────────────────────────────────────────┘
@@ -71,7 +71,7 @@ class AgentState(TypedDict):
 ```
 
 Conversation history is persisted across requests via a shared checkpointer keyed by `thread_id`.
-When `POSTGRES_USER` / `POSTGRES_HOST` (or `POSTGRES_URL`) is configured, a **PostgreSQL checkpointer**
+When `POSTGRES_USER` / `POSTGRES_HOST` is configured, an **AsyncPostgresSaver checkpointer**
 is used (via `langgraph-checkpoint-postgres`), backed by the shared `ceramicraft-postgres` container
 used by log-ms and notification-ms. If postgres is not configured, it falls back to an in-memory
 `MemorySaver` (history is lost on restart).

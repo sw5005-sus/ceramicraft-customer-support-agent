@@ -104,6 +104,35 @@ async def test_build_graph_creates_all_nodes(
     # Check that finish point was set
     mock_graph_instance.set_finish_point.assert_called_once_with("guard")
 
+    # Check conditional routing edges were added from classifier
+    mock_graph_instance.add_conditional_edges.assert_called_once()
+    routing_arg = mock_graph_instance.add_conditional_edges.call_args[0]
+    assert routing_arg[0] == "classifier"
+    routing_map = mock_graph_instance.add_conditional_edges.call_args[0][2]
+    for intent in [
+        "browse",
+        "cart",
+        "order",
+        "review",
+        "account",
+        "chitchat",
+        "escalate",
+    ]:
+        assert intent in routing_map
+
+    # Check all domain nodes have an edge to guard
+    add_edge_calls = {call[0] for call in mock_graph_instance.add_edge.call_args_list}
+    for domain in [
+        "browse",
+        "cart",
+        "order",
+        "review",
+        "account",
+        "chitchat",
+        "escalate",
+    ]:
+        assert (domain, "guard") in add_edge_calls
+
     # Check compilation was called
     mock_graph_instance.compile.assert_called_once()
 
