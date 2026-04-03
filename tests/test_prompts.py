@@ -1,21 +1,23 @@
 """Tests for the prompts module."""
 
+from unittest.mock import MagicMock, patch
+
 from ceramicraft_customer_support_agent.prompts import (
-    SYSTEM_PROMPT,
+    ACCOUNT_PROMPT,
     BROWSE_PROMPT,
     CART_PROMPT,
+    CHITCHAT_PROMPT,
     ORDER_PROMPT,
     REVIEW_PROMPT,
-    ACCOUNT_PROMPT,
-    CHITCHAT_PROMPT,
-    get_prompt,
-    get_system_prompt,
+    SYSTEM_PROMPT,
+    get_account_prompt,
     get_browse_prompt,
     get_cart_prompt,
-    get_order_prompt,
-    get_review_prompt,
-    get_account_prompt,
     get_chitchat_prompt,
+    get_order_prompt,
+    get_prompt,
+    get_review_prompt,
+    get_system_prompt,
 )
 
 
@@ -224,20 +226,32 @@ def _clear_prompt_cache():
     p._prompt_cache.clear()
 
 
-def test_get_prompt_fallback_no_mlflow_uri(monkeypatch):
-    """get_prompt should return fallback when MLFLOW_TRACKING_URI is not set."""
-    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
-    _clear_prompt_cache()
+def _mock_settings_no_mlflow():
+    cfg = MagicMock()
+    cfg.MLFLOW_TRACKING_URI = ""
+    return cfg
 
-    result = get_prompt("SYSTEM_PROMPT", "my fallback")
+
+def _mock_settings_with_mlflow(uri: str = "http://localhost:5000"):
+    cfg = MagicMock()
+    cfg.MLFLOW_TRACKING_URI = uri
+    return cfg
+
+
+def test_get_prompt_fallback_no_mlflow_uri():
+    """get_prompt should return fallback when MLFLOW_TRACKING_URI is not set."""
+    _clear_prompt_cache()
+    with patch(
+        "ceramicraft_customer_support_agent.prompts.get_settings",
+        return_value=_mock_settings_no_mlflow(),
+    ):
+        result = get_prompt("SYSTEM_PROMPT", "my fallback")
     assert result == "my fallback"
 
 
-def test_get_prompt_fallback_on_import_error(monkeypatch):
+def test_get_prompt_fallback_on_import_error():
     """get_prompt should return fallback when mlflow is not importable."""
-    monkeypatch.setenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
     _clear_prompt_cache()
-
     import builtins
 
     real_import = builtins.__import__
@@ -247,14 +261,19 @@ def test_get_prompt_fallback_on_import_error(monkeypatch):
             raise ImportError("mlflow not installed")
         return real_import(name, *args, **kwargs)
 
-    monkeypatch.setattr(builtins, "__import__", mock_import)
-    result = get_prompt("SYSTEM_PROMPT", "fallback text")
+    with (
+        patch(
+            "ceramicraft_customer_support_agent.prompts.get_settings",
+            return_value=_mock_settings_with_mlflow(),
+        ),
+        patch.object(builtins, "__import__", side_effect=mock_import),
+    ):
+        result = get_prompt("SYSTEM_PROMPT", "fallback text")
     assert result == "fallback text"
 
 
-def test_get_prompt_cached(monkeypatch):
+def test_get_prompt_cached():
     """get_prompt should use cache on second call."""
-    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     _clear_prompt_cache()
 
     import ceramicraft_customer_support_agent.prompts as p
@@ -279,25 +298,29 @@ def test_existing_constants_unchanged():
     assert "CeramiCraft" in BROWSE_PROMPT
 
 
-def test_convenience_functions_return_strings(monkeypatch):
+def test_convenience_functions_return_strings():
     """Convenience get_*_prompt() functions should return non-empty strings."""
-    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     _clear_prompt_cache()
+    with patch(
+        "ceramicraft_customer_support_agent.prompts.get_settings",
+        return_value=_mock_settings_no_mlflow(),
+    ):
+        assert isinstance(get_system_prompt(), str)
+        assert isinstance(get_browse_prompt(), str)
+        assert isinstance(get_cart_prompt(), str)
+        assert isinstance(get_order_prompt(), str)
+        assert isinstance(get_review_prompt(), str)
+        assert isinstance(get_account_prompt(), str)
+        assert isinstance(get_chitchat_prompt(), str)
 
-    assert isinstance(get_system_prompt(), str)
-    assert isinstance(get_browse_prompt(), str)
-    assert isinstance(get_cart_prompt(), str)
-    assert isinstance(get_order_prompt(), str)
-    assert isinstance(get_review_prompt(), str)
-    assert isinstance(get_account_prompt(), str)
-    assert isinstance(get_chitchat_prompt(), str)
 
-
-def test_convenience_functions_return_fallbacks_without_mlflow(monkeypatch):
+def test_convenience_functions_return_fallbacks_without_mlflow():
     """Without MLflow URI, convenience functions should return hardcoded prompts."""
-    monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     _clear_prompt_cache()
-
-    assert get_system_prompt() == SYSTEM_PROMPT
-    _clear_prompt_cache()
-    assert get_browse_prompt() == BROWSE_PROMPT
+    with patch(
+        "ceramicraft_customer_support_agent.prompts.get_settings",
+        return_value=_mock_settings_no_mlflow(),
+    ):
+        assert get_system_prompt() == SYSTEM_PROMPT
+        _clear_prompt_cache()
+        assert get_browse_prompt() == BROWSE_PROMPT

@@ -6,6 +6,7 @@ from collections.abc import Callable
 from langchain_openai import ChatOpenAI
 
 from ceramicraft_customer_support_agent.config import get_settings
+from ceramicraft_customer_support_agent.prompts import get_chitchat_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,6 @@ def build_chitchat_node() -> Callable:
 
     def chitchat_node(state: dict) -> dict:
         """Handle general conversation without tools."""
-        from ceramicraft_customer_support_agent.prompts import CHITCHAT_PROMPT
-
         messages = state.get("messages", [])
         if not messages:
             return {
@@ -39,9 +38,8 @@ def build_chitchat_node() -> Callable:
         # Map LangChain message types to OpenAI roles
         _role_map = {"human": "user", "ai": "assistant", "system": "system"}
 
-        # Add system prompt as first message for context
-        # Filter out tool-related messages that don't map to valid roles
-        full_messages = [{"role": "system", "content": CHITCHAT_PROMPT}] + [
+        # Add system prompt; filter tool-related messages that lack a plain role
+        full_messages = [{"role": "system", "content": get_chitchat_prompt()}] + [
             {
                 "role": _role_map[msg.type],
                 "content": str(msg.content) if hasattr(msg, "content") else str(msg),

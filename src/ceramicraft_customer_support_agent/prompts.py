@@ -2,6 +2,8 @@
 
 import logging as _logging
 
+from ceramicraft_customer_support_agent.config import get_settings
+
 _logger = _logging.getLogger(__name__)
 _prompt_cache: dict[str, str] = {}
 
@@ -156,7 +158,7 @@ def get_prompt(name: str, fallback: str) -> str:
     try:
         import mlflow  # noqa: PLC0415
 
-        tracking_uri = __import__("os").environ.get("MLFLOW_TRACKING_URI")
+        tracking_uri = get_settings().MLFLOW_TRACKING_URI
         if not tracking_uri:
             _prompt_cache[name] = fallback
             return fallback

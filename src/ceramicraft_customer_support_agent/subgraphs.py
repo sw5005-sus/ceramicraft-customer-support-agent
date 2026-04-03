@@ -9,6 +9,13 @@ from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent  # ty: ignore[deprecated]
 
 from ceramicraft_customer_support_agent.config import get_settings
+from ceramicraft_customer_support_agent.prompts import (
+    get_account_prompt,
+    get_browse_prompt,
+    get_cart_prompt,
+    get_order_prompt,
+    get_review_prompt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +102,9 @@ def build_browse_subgraph(all_tools: Sequence[BaseTool]) -> Any:
 
     Handles product search, viewing details, and reading reviews.
     """
-    from ceramicraft_customer_support_agent.prompts import BROWSE_PROMPT
-
-    return _build_domain_subgraph(all_tools, BROWSE_TOOLS, BROWSE_PROMPT, "browse")
+    return _build_domain_subgraph(
+        all_tools, BROWSE_TOOLS, get_browse_prompt(), "browse"
+    )
 
 
 def build_cart_subgraph(all_tools: Sequence[BaseTool]) -> Any:
@@ -105,9 +112,7 @@ def build_cart_subgraph(all_tools: Sequence[BaseTool]) -> Any:
 
     Handles shopping cart operations and product search.
     """
-    from ceramicraft_customer_support_agent.prompts import CART_PROMPT
-
-    return _build_domain_subgraph(all_tools, CART_TOOLS, CART_PROMPT, "cart")
+    return _build_domain_subgraph(all_tools, CART_TOOLS, get_cart_prompt(), "cart")
 
 
 def build_order_subgraph(all_tools: Sequence[BaseTool]) -> Any:
@@ -115,9 +120,7 @@ def build_order_subgraph(all_tools: Sequence[BaseTool]) -> Any:
 
     Handles order management and history.
     """
-    from ceramicraft_customer_support_agent.prompts import ORDER_PROMPT
-
-    return _build_domain_subgraph(all_tools, ORDER_TOOLS, ORDER_PROMPT, "order")
+    return _build_domain_subgraph(all_tools, ORDER_TOOLS, get_order_prompt(), "order")
 
 
 def build_review_subgraph(all_tools: Sequence[BaseTool]) -> Any:
@@ -125,9 +128,9 @@ def build_review_subgraph(all_tools: Sequence[BaseTool]) -> Any:
 
     Handles review creation and management.
     """
-    from ceramicraft_customer_support_agent.prompts import REVIEW_PROMPT
-
-    return _build_domain_subgraph(all_tools, REVIEW_TOOLS, REVIEW_PROMPT, "review")
+    return _build_domain_subgraph(
+        all_tools, REVIEW_TOOLS, get_review_prompt(), "review"
+    )
 
 
 def build_account_subgraph(all_tools: Sequence[BaseTool]) -> Any:
@@ -135,6 +138,6 @@ def build_account_subgraph(all_tools: Sequence[BaseTool]) -> Any:
 
     Handles profile and address management.
     """
-    from ceramicraft_customer_support_agent.prompts import ACCOUNT_PROMPT
-
-    return _build_domain_subgraph(all_tools, ACCOUNT_TOOLS, ACCOUNT_PROMPT, "account")
+    return _build_domain_subgraph(
+        all_tools, ACCOUNT_TOOLS, get_account_prompt(), "account"
+    )
