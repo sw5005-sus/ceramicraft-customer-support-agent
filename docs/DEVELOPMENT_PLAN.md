@@ -69,7 +69,8 @@ MCP Client 使用 **connection 模式**（`session=None, connection=StreamableHt
 ```
 用户 JWT ──▶ Agent (FastAPI, 提取 Bearer token)
                 │
-                ├─▶ AgentState.auth_token ──▶ Guard 检查
+                ├─▶ AgentState.auth_token ──▶ _wrap_subgraph 注入 SystemMessage
+                │                              + Guard 兜底检查
                 │
                 └─▶ set_auth_token(token)  ──▶ contextvars.ContextVar
                                                      │
@@ -108,7 +109,10 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 
 ### 1.1 Token 透传
 - 从 HTTP Authorization header 提取 Bearer token
-- 存入 AgentState.auth_token，Guard 节点检查
+- 存入 AgentState.auth_token
+- `_wrap_subgraph` 注入 `SystemMessage` 告知 LLM 用户认证状态（已认证/未认证）
+- Guard 节点对未认证用户的 auth-error 消息追加登录提示
+- Subgraph 调用 wrap 在 try/except 中，工具异常返回友好提示而非 500
 
 ### 1.2 MCP Client（调下游）
 - PersistentMCPClient 单例（connection 模式）连接 ceramicraft-mcp-server（Streamable HTTP）
@@ -221,8 +225,8 @@ ceramicraft-customer-support-agent/
 │   ├── config.py                     # 配置（pydantic-settings）
 │   ├── agent.py                      # 向后兼容接口（调 build_graph）
 │   ├── classifier.py                 # 意图分类节点（Intent enum + Pydantic structured output）
-│   ├── graph.py                      # StateGraph 主图（AgentState + build_graph + _wrap_subgraph + _sanitize_messages）
-│   ├── guard.py                      # 安全守卫节点（auth 检查 + 敏感操作确认）
+│   ├── graph.py                      # StateGraph 主图（AgentState + build_graph + _wrap_subgraph + auth 注入 + 异常捕获）
+│   ├── guard.py                      # 安全守卫节点（auth 兜底检查 + 敏感操作确认）
 │   ├── nodes.py                      # 轻量节点（chitchat + escalate，无工具）
 │   ├── subgraphs.py                  # 领域子图（5 个 stateless ReAct agent builder）
 │   ├── mcp_client.py                 # MCP Client（PersistentMCPClient 单例，connection 模式 + auth interceptor）
