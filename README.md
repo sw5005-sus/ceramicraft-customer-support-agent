@@ -111,6 +111,9 @@ uv run ty check src/
 
 # Test
 uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-missing
+
+# MLflow evaluation (requires agent running + MLFLOW_TRACKING_URI set)
+MLFLOW_TRACKING_URI=http://localhost:5000 uv run python scripts/run_evaluation.py
 ```
 
 ## Configuration
