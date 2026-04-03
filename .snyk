@@ -42,3 +42,11 @@ ignore:
     - '*':
         reason: Upstream mlflow CVE, no patch available
         expires: 2026-06-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-15870196:
+    - '*':
+        reason: Upstream mlflow CVE (mlflow@3.10.1), no patch available
+        expires: 2026-09-30T00:00:00.000Z
+  SNYK-PYTHON-MLFLOWSKINNY-15870197:
+    - '*':
+        reason: Upstream mlflow-skinny CVE (mlflow-skinny@3.10.1), no patch available
+        expires: 2026-09-30T00:00:00.000Z
