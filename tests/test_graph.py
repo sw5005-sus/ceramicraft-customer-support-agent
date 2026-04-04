@@ -311,5 +311,5 @@ def test_settings_database_url_empty_when_no_host():
     """DATABASE_URL is empty when POSTGRES_HOST is not set."""
     from ceramicraft_customer_support_agent.config import Settings
 
-    s = Settings(_env_file=None)
+    s = Settings(_env_file=None)  # ty: ignore[unknown-argument]
     assert s.DATABASE_URL == ""
