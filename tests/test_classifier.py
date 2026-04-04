@@ -1,17 +1,17 @@
 """Tests for the classifier module."""
 
-from unittest.mock import MagicMock, patch
-from langchain_core.messages import HumanMessage
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from langchain_core.messages import HumanMessage
 from pydantic import ValidationError
 
-from ceramicraft_customer_support_agent.prompts import CLASSIFIER_PROMPT
 from ceramicraft_customer_support_agent.classifier import (
     Intent,
     IntentClassification,
     build_classifier,
 )
+from ceramicraft_customer_support_agent.prompts import CLASSIFIER_PROMPT
 
 
 def test_intent_enum_values():
@@ -77,7 +77,7 @@ def test_build_classifier_creates_llm(mock_llm_cls):
 
 
 @patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
-def test_classifier_node_with_valid_message(mock_llm_cls):
+async def test_classifier_node_with_valid_message(mock_llm_cls):
     """Classifier node should process valid message and return intent."""
     mock_llm_instance = MagicMock()
     mock_structured_llm = MagicMock()
@@ -90,7 +90,7 @@ def test_classifier_node_with_valid_message(mock_llm_cls):
         confidence=0.9,
         reasoning="User wants to search for products",
     )
-    mock_structured_llm.invoke.return_value = mock_result
+    mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
 
     classifier = build_classifier()
 
@@ -101,20 +101,20 @@ def test_classifier_node_with_valid_message(mock_llm_cls):
 
     state = {"messages": [mock_message]}
 
-    result = classifier(state)
+    result = await classifier(state)
 
     assert result == {"intent": "browse"}
-    mock_structured_llm.invoke.assert_called_once()
+    mock_structured_llm.ainvoke.assert_called_once()
 
     # Check that the prompt was formatted correctly
-    call_args = mock_structured_llm.invoke.call_args[0][0]
+    call_args = mock_structured_llm.ainvoke.call_args[0][0]
     assert len(call_args) == 1
     assert isinstance(call_args[0], HumanMessage)
     assert "I want to find ceramic bowls" in call_args[0].content
 
 
 @patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
-def test_classifier_node_with_empty_messages(mock_llm_cls):
+async def test_classifier_node_with_empty_messages(mock_llm_cls):
     """Classifier node should default to chitchat with empty messages."""
     mock_llm_instance = MagicMock()
     mock_structured_llm = MagicMock()
@@ -125,14 +125,14 @@ def test_classifier_node_with_empty_messages(mock_llm_cls):
 
     state = {"messages": []}
 
-    result = classifier(state)
+    result = await classifier(state)
 
     assert result == {"intent": "chitchat"}
-    mock_structured_llm.invoke.assert_not_called()
+    mock_structured_llm.ainvoke.assert_not_called()
 
 
 @patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
-def test_classifier_node_with_no_human_messages(mock_llm_cls):
+async def test_classifier_node_with_no_human_messages(mock_llm_cls):
     """Classifier node should default to chitchat with no human messages."""
     mock_llm_instance = MagicMock()
     mock_structured_llm = MagicMock()
@@ -148,15 +148,15 @@ def test_classifier_node_with_no_human_messages(mock_llm_cls):
 
     state = {"messages": [mock_message]}
 
-    result = classifier(state)
+    result = await classifier(state)
 
     assert result == {"intent": "chitchat"}
-    mock_structured_llm.invoke.assert_not_called()
+    mock_structured_llm.ainvoke.assert_not_called()
 
 
 @patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
 @patch("ceramicraft_customer_support_agent.classifier.logger")
-def test_classifier_node_with_validation_error(mock_logger, mock_llm_cls):
+async def test_classifier_node_with_validation_error(mock_logger, mock_llm_cls):
     """Classifier node should handle validation errors gracefully."""
     mock_llm_instance = MagicMock()
     mock_structured_llm = MagicMock()
@@ -164,8 +164,8 @@ def test_classifier_node_with_validation_error(mock_logger, mock_llm_cls):
     mock_llm_cls.return_value = mock_llm_instance
 
     # Mock validation error
-    mock_structured_llm.invoke.side_effect = ValidationError.from_exception_data(
-        "test", []
+    mock_structured_llm.ainvoke = AsyncMock(
+        side_effect=ValidationError.from_exception_data("test", [])
     )
 
     classifier = build_classifier()
@@ -176,7 +176,7 @@ def test_classifier_node_with_validation_error(mock_logger, mock_llm_cls):
 
     state = {"messages": [mock_message]}
 
-    result = classifier(state)
+    result = await classifier(state)
 
     assert result == {"intent": "chitchat"}
     mock_logger.exception.assert_called_once_with("Failed to parse classifier output")
@@ -184,7 +184,7 @@ def test_classifier_node_with_validation_error(mock_logger, mock_llm_cls):
 
 @patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
 @patch("ceramicraft_customer_support_agent.classifier.logger")
-def test_classifier_node_with_generic_exception(mock_logger, mock_llm_cls):
+async def test_classifier_node_with_generic_exception(mock_logger, mock_llm_cls):
     """Classifier node should handle generic exceptions gracefully."""
     mock_llm_instance = MagicMock()
     mock_structured_llm = MagicMock()
@@ -192,7 +192,7 @@ def test_classifier_node_with_generic_exception(mock_logger, mock_llm_cls):
     mock_llm_cls.return_value = mock_llm_instance
 
     # Mock generic exception
-    mock_structured_llm.invoke.side_effect = Exception("API error")
+    mock_structured_llm.ainvoke = AsyncMock(side_effect=Exception("API error"))
 
     classifier = build_classifier()
 
@@ -202,14 +202,14 @@ def test_classifier_node_with_generic_exception(mock_logger, mock_llm_cls):
 
     state = {"messages": [mock_message]}
 
-    result = classifier(state)
+    result = await classifier(state)
 
     assert result == {"intent": "chitchat"}
     mock_logger.exception.assert_called_once_with("Intent classification failed")
 
 
 @patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
-def test_classifier_node_finds_latest_human_message(mock_llm_cls):
+async def test_classifier_node_finds_latest_human_message(mock_llm_cls):
     """Classifier should process the most recent human message."""
     mock_llm_instance = MagicMock()
     mock_structured_llm = MagicMock()
@@ -219,7 +219,7 @@ def test_classifier_node_finds_latest_human_message(mock_llm_cls):
     mock_result = IntentClassification(
         intent=Intent.CART, confidence=0.8, reasoning="User wants to add to cart"
     )
-    mock_structured_llm.invoke.return_value = mock_result
+    mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
 
     classifier = build_classifier()
 
@@ -243,12 +243,12 @@ def test_classifier_node_finds_latest_human_message(mock_llm_cls):
 
     state = {"messages": messages}
 
-    result = classifier(state)
+    result = await classifier(state)
 
     assert result == {"intent": "cart"}
 
     # Verify the latest message was used
-    call_args = mock_structured_llm.invoke.call_args[0][0]
+    call_args = mock_structured_llm.ainvoke.call_args[0][0]
     assert "add product to my cart" in call_args[0].content
     assert "old message" not in call_args[0].content
 

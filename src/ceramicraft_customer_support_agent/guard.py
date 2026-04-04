@@ -4,10 +4,12 @@ import logging
 import re
 from collections.abc import Callable
 
+from langchain_core.messages import AIMessage, ToolMessage
+
 logger = logging.getLogger(__name__)
 
 # Operations that require confirmation
-SENSITIVE_OPERATIONS = {"delete_address", "confirm_receipt"}
+SENSITIVE_OPERATIONS = {"delete_address", "confirm_receipt", "create_order"}
 
 # Pre-compiled regex for detecting auth-related error messages.
 # Uses word boundaries to avoid false positives on "author", "authority", etc.
@@ -49,13 +51,19 @@ def build_guard() -> Callable:
                 if not auth_token:
                     needs_auth_prompt = True
 
-            # Check for sensitive operations in tool calls
-            for op in SENSITIVE_OPERATIONS:
-                if op in msg_content:
-                    sensitive_op_detected = op
-                    if not confirmed:
-                        needs_confirmation_prompt = True
-                    break
+            # Check for sensitive operations via ToolMessage.name (precise)
+            # or AIMessage.tool_calls (requested but maybe not yet executed)
+            if isinstance(msg, ToolMessage) and msg.name in SENSITIVE_OPERATIONS:
+                sensitive_op_detected = msg.name
+                if not confirmed:
+                    needs_confirmation_prompt = True
+            elif isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
+                for tc in msg.tool_calls:
+                    if tc.get("name") in SENSITIVE_OPERATIONS:
+                        sensitive_op_detected = tc["name"]
+                        if not confirmed:
+                            needs_confirmation_prompt = True
+                        break
 
         new_messages = []
         updates = {}
@@ -75,6 +83,7 @@ def build_guard() -> Callable:
             confirm_messages = {
                 "delete_address": "Are you sure you want to delete this address? This action cannot be undone.",
                 "confirm_receipt": "Please confirm that you have received your order and are satisfied with it.",
+                "create_order": "I'm about to place an order for you. Please confirm you'd like to proceed.",
             }
 
             confirm_message = confirm_messages.get(

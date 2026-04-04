@@ -236,8 +236,22 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
         new_messages = result.get("messages", [])
         # Strip the injected auth hint when counting original messages.
         orig_count = len(messages) - (1 if auth_token else 0)
-        if len(new_messages) > orig_count:
+        # Always slice off the echoed input messages to avoid duplication.
+        # Subgraphs typically echo back all input messages + new responses.
+        if len(new_messages) >= orig_count:
             new_messages = new_messages[orig_count:]
+
+        # Fallback: if subgraph returned no new messages, provide a generic reply
+        if not new_messages:
+            new_messages = [
+                {
+                    "role": "assistant",
+                    "content": (
+                        "I processed your request but couldn't generate a "
+                        "response. Could you please rephrase or try again?"
+                    ),
+                }
+            ]
 
         return {"messages": new_messages}
 

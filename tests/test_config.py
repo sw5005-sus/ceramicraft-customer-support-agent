@@ -4,8 +4,8 @@ from ceramicraft_customer_support_agent.config import Settings, get_settings
 
 
 def test_settings_defaults():
-    """Settings should load with expected defaults."""
-    settings = Settings()
+    """Settings should load with expected defaults (ignoring .env overrides)."""
+    settings = Settings(_env_file=None)
     assert settings.MCP_SERVER_URL == "http://mcp-server-svc:8080/mcp"
     assert settings.OPENAI_MODEL == "gpt-4o"
     assert settings.AGENT_HOST == "0.0.0.0"

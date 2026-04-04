@@ -2,6 +2,8 @@
 
 from unittest.mock import patch
 
+from langchain_core.messages import AIMessage, ToolMessage
+
 from ceramicraft_customer_support_agent.guard import (
     SENSITIVE_OPERATIONS,
     build_guard,
@@ -10,7 +12,7 @@ from ceramicraft_customer_support_agent.guard import (
 
 def test_sensitive_operations_defined():
     """SENSITIVE_OPERATIONS should contain expected operations."""
-    expected_sensitive = {"delete_address", "confirm_receipt"}
+    expected_sensitive = {"delete_address", "confirm_receipt", "create_order"}
     assert SENSITIVE_OPERATIONS == expected_sensitive
 
 
@@ -64,15 +66,17 @@ def test_guard_node_with_auth_error_has_token():
 
 
 @patch("ceramicraft_customer_support_agent.guard.logger")
-def test_guard_node_with_confirmation_needed(mock_logger):
-    """Guard should add confirmation message for sensitive operations."""
+def test_guard_node_with_confirmation_needed_via_tool_message(mock_logger):
+    """Guard should add confirmation when a sensitive ToolMessage is detected."""
     guard = build_guard()
 
     state = {
         "auth_token": "token",
         "confirmed": False,
         "messages": [
-            {"role": "user", "content": "Please delete_address for me"},
+            ToolMessage(
+                content="Address deleted", name="delete_address", tool_call_id="tc1"
+            ),
         ],
     }
 
@@ -93,6 +97,32 @@ def test_guard_node_with_confirmation_needed(mock_logger):
     )
 
 
+@patch("ceramicraft_customer_support_agent.guard.logger")
+def test_guard_node_with_confirmation_needed_via_ai_tool_calls(mock_logger):
+    """Guard should detect sensitive ops from AIMessage.tool_calls."""
+    guard = build_guard()
+
+    ai_msg = AIMessage(
+        content="",
+        tool_calls=[{"id": "tc1", "name": "delete_address", "args": {"id": "123"}}],
+    )
+
+    state = {
+        "auth_token": "token",
+        "confirmed": False,
+        "messages": [ai_msg],
+    }
+
+    result = guard(state)
+
+    assert "messages" in result
+    assert result["needs_confirm"] is True
+
+    mock_logger.info.assert_called_once_with(
+        "Added confirmation requirement for %s", "delete_address"
+    )
+
+
 def test_guard_node_with_confirmation_already_given():
     """Guard should not add confirmation when already confirmed."""
     guard = build_guard()
@@ -101,7 +131,9 @@ def test_guard_node_with_confirmation_already_given():
         "auth_token": "token",
         "confirmed": True,
         "messages": [
-            {"role": "user", "content": "Please delete_address for me"},
+            ToolMessage(
+                content="Address deleted", name="delete_address", tool_call_id="tc1"
+            ),
         ],
     }
 
@@ -120,7 +152,9 @@ def test_guard_node_with_confirm_receipt(mock_logger):
         "auth_token": "token",
         "confirmed": False,
         "messages": [
-            {"role": "assistant", "content": "I'll confirm_receipt for your order"},
+            ToolMessage(
+                content="Receipt confirmed", name="confirm_receipt", tool_call_id="tc1"
+            ),
         ],
     }
 
@@ -138,6 +172,35 @@ def test_guard_node_with_confirm_receipt(mock_logger):
     )
 
 
+@patch("ceramicraft_customer_support_agent.guard.logger")
+def test_guard_node_with_create_order(mock_logger):
+    """Guard should handle create_order as a sensitive operation."""
+    guard = build_guard()
+
+    ai_msg = AIMessage(
+        content="",
+        tool_calls=[{"id": "tc1", "name": "create_order", "args": {}}],
+    )
+
+    state = {
+        "auth_token": "token",
+        "confirmed": False,
+        "messages": [ai_msg],
+    }
+
+    result = guard(state)
+
+    assert "messages" in result
+    assert result["needs_confirm"] is True
+
+    confirm_message = result["messages"][0]["content"]
+    assert "order" in confirm_message.lower()
+
+    mock_logger.info.assert_called_once_with(
+        "Added confirmation requirement for %s", "create_order"
+    )
+
+
 def test_guard_node_with_no_sensitive_operations():
     """Guard should not add messages for non-sensitive operations."""
     guard = build_guard()
@@ -146,14 +209,36 @@ def test_guard_node_with_no_sensitive_operations():
         "auth_token": "token",
         "confirmed": False,
         "messages": [
-            {"role": "user", "content": "Please search_products for me"},
-            {"role": "assistant", "content": "Here are some products..."},
+            ToolMessage(
+                content="Found products", name="search_products", tool_call_id="tc1"
+            ),
         ],
     }
 
     result = guard(state)
 
     # Should not add any messages
+    assert result == {}
+
+
+def test_guard_node_no_false_positive_on_content_text():
+    """Guard should NOT trigger on content that merely mentions tool names."""
+    guard = build_guard()
+
+    state = {
+        "auth_token": "token",
+        "confirmed": False,
+        "messages": [
+            {
+                "role": "assistant",
+                "content": "I can help you delete_address if you want.",
+            },
+        ],
+    }
+
+    result = guard(state)
+
+    # Plain dict messages have no .name attribute — should not trigger
     assert result == {}
 
 
@@ -191,15 +276,14 @@ def test_guard_node_checks_recent_messages_only():
     """Guard should only check the last 5 messages."""
     guard = build_guard()
 
-    # Create 10 messages, sensitive op in first message (should be ignored)
+    # Create 10 messages, sensitive ToolMessage in first message (should be ignored)
     messages = []
-    messages.append({"role": "user", "content": "delete_address in old message"})
+    messages.append(
+        ToolMessage(content="deleted", name="delete_address", tool_call_id="tc1")
+    )
 
-    for i in range(8):
+    for i in range(9):
         messages.append({"role": "user", "content": f"normal message {i}"})
-
-    # Recent message without sensitive operation
-    messages.append({"role": "user", "content": "show my profile"})
 
     state = {"auth_token": "token", "confirmed": False, "messages": messages}
 
@@ -242,12 +326,9 @@ def test_guard_node_no_false_positive_on_author():
         "The author of this review is John",
         "Local authority regulations apply",
         "authored by the team",
-        "unauthorized" not in "authority",  # just a truthy filler
     ]
 
     for phrase in false_positive_phrases:
-        if isinstance(phrase, bool):
-            continue
         state = {
             "auth_token": None,
             "messages": [
@@ -258,26 +339,6 @@ def test_guard_node_no_false_positive_on_author():
         result = guard(state)
 
         assert result == {}, f"False positive on: {phrase}"
-
-
-def test_guard_node_with_unknown_sensitive_operation():
-    """Guard should handle unknown sensitive operations."""
-    guard = build_guard()
-
-    # Temporarily add a new sensitive operation for testing
-    state = {
-        "auth_token": "token",
-        "confirmed": False,
-        "messages": [
-            {"role": "user", "content": "Please confirm_receipt now"},
-        ],
-    }
-
-    result = guard(state)
-
-    # Should use the specific confirm_receipt message
-    confirm_message = result["messages"][0]["content"]
-    assert "received your order" in confirm_message
 
 
 def test_guard_node_preserves_other_state():

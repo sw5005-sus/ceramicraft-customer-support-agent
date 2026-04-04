@@ -28,7 +28,7 @@ def build_chitchat_node() -> Callable:
         api_key=settings.OPENAI_API_KEY,  # ty: ignore[unknown-argument]
     )
 
-    def chitchat_node(state: dict) -> dict:
+    async def chitchat_node(state: dict) -> dict:
         """Handle general conversation without tools."""
         messages = state.get("messages", [])
         if not messages:
@@ -56,7 +56,7 @@ def build_chitchat_node() -> Callable:
             if hasattr(msg, "type") and msg.type in _role_map
         ]
 
-        response = llm.invoke(full_messages)
+        response = await llm.ainvoke(full_messages)
         return {"messages": [{"role": "assistant", "content": response.content}]}
 
     return chitchat_node

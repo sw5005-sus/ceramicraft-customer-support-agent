@@ -49,7 +49,7 @@ def build_classifier() -> Callable:
         api_key=settings.OPENAI_API_KEY,  # ty: ignore[unknown-argument]
     ).with_structured_output(IntentClassification)
 
-    def classifier_node(state: dict) -> dict:
+    async def classifier_node(state: dict) -> dict:
         """Classify the user's intent from their latest message."""
         messages = state.get("messages", [])
         if not messages:
@@ -68,7 +68,7 @@ def build_classifier() -> Callable:
         try:
             # Format the prompt with the user message
             prompt_content = get_classifier_prompt().format(message=user_message)
-            result: IntentClassification = llm.invoke(  # ty: ignore[invalid-assignment]
+            result: IntentClassification = await llm.ainvoke(  # ty: ignore[invalid-assignment]
                 [HumanMessage(content=prompt_content)]
             )
 
