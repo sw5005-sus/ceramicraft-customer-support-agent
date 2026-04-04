@@ -183,6 +183,13 @@ async def reset(thread_id: str):
 
 def main() -> None:
     """Start the Customer Support Agent HTTP server."""
+    import sys
+
+    if sys.platform == "win32":
+        import asyncio
+
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     settings = get_settings()
     logger.info("Starting Customer Support Agent (REST)...")
     uvicorn.run(
