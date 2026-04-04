@@ -99,7 +99,6 @@ def _build_domain_subgraph(
         model=_get_llm(),
         tools=tools,
         prompt=combined_prompt,
-        handle_tool_errors=True,
     )
     logger.info("Built %s subgraph with %d tools", domain, len(tools))
     return agent
