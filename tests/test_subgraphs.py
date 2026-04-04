@@ -216,3 +216,21 @@ def test_all_subgraphs_use_correct_prompts(mock_create_react, mock_llm_cls):
         # Each should have a different prompt
         assert isinstance(call_args.kwargs["prompt"], str)
         assert len(call_args.kwargs["prompt"]) > 0
+
+
+@patch("ceramicraft_customer_support_agent.subgraphs.ChatOpenAI")
+@patch("ceramicraft_customer_support_agent.subgraphs.create_react_agent")
+def test_tools_have_handle_tool_error_enabled(mock_create_react, mock_llm_cls):
+    """All tools passed to subgraphs should have handle_tool_error=True."""
+    mock_tools = []
+    for name in ["search_products", "get_product", "list_product_reviews"]:
+        tool = MagicMock()
+        tool.name = name
+        mock_tools.append(tool)
+
+    mock_create_react.return_value = MagicMock()
+    build_browse_subgraph(mock_tools)
+
+    call_args = mock_create_react.call_args
+    for tool in call_args.kwargs["tools"]:
+        assert tool.handle_tool_error is True

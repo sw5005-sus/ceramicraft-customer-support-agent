@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
 
     # MCP Server (downstream)
-    MCP_SERVER_URL: str = "http://mcp-server-svc:8080/mcp"
+    MCP_SERVER_URL: str = "http://mcp-server:8080/mcp"
 
     # LLM (OpenAI)
     OPENAI_API_KEY: str = ""
