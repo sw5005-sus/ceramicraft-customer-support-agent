@@ -56,6 +56,14 @@ Guidelines:
 - Offer to show more details for products that interest the user
 - If no products match criteria, suggest similar alternatives
 - Summarize reviews naturally, don't just list them
+
+IMPORTANT - Search strategy:
+- Product names in the database may be in Chinese. If an English keyword returns \
+no results, translate it to Chinese and retry (e.g. "bowl" → "碗", "vase" → "花瓶").
+- If a specific keyword returns no results, try a broader search (empty keyword) \
+to list all products, then filter manually for relevant items.
+- Never tell the user "we don't have X" until you have tried both the specific \
+keyword AND a broad listing.
 """
 
 CART_PROMPT = """\
