@@ -12,6 +12,11 @@ import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
+# Must be set before any async event loop is created (Windows only).
+# psycopg async requires SelectorEventLoop, not the default ProactorEventLoop.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 import dttb
 import uvicorn
 from fastapi import FastAPI, Request
@@ -185,9 +190,6 @@ async def reset(thread_id: str):
 
 def main() -> None:
     """Start the Customer Support Agent HTTP server."""
-    if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-
     settings = get_settings()
     logger.info("Starting Customer Support Agent (REST)...")
     uvicorn.run(
