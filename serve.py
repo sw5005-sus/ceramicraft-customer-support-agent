@@ -116,8 +116,6 @@ async def chat(body: ChatRequest, request: Request):
         initial_state = {
             "messages": [{"role": "user", "content": body.message}],
             "auth_token": token,
-            "needs_confirm": False,
-            "confirmed": False,
         }
 
         response = await agent.ainvoke(
