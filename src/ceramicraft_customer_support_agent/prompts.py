@@ -149,11 +149,20 @@ Classify the user's message into one of these intents:
 
 - **browse**: Looking for products, searching, viewing product details or reviews
 - **cart**: Managing shopping cart (view, add, remove, update items, pricing)
-- **order**: Order management (list orders, view details, confirm receipt, order status)
+- **order**: Order management (list orders, view details, confirm receipt, order status, placing orders, providing shipping info)
 - **review**: Writing or managing reviews (create, like, view personal reviews)
 - **account**: Profile or address management (view/update profile, manage addresses)
 - **chitchat**: General conversation, greetings, small talk
-- **escalate**: Complex issues, complaints, requests for human support
+- **escalate**: Complex issues, complaints, explicit requests for human support
+
+Previous intent in this conversation: {last_intent}
+
+IMPORTANT - Conversation continuity rules:
+- If the previous intent is set (not "none"), the user is likely continuing that topic.
+- Short confirmations ("yes", "ok", "correct", "确认", "正确", "好的", "对") should keep the previous intent.
+- Messages that reference or clarify the previous topic (e.g. "I meant the address is correct") should keep the previous intent.
+- Only change intent when the user clearly shifts to a new topic.
+- When in doubt and a previous intent exists, prefer the previous intent over escalate or chitchat.
 
 Respond with a JSON object containing the intent, confidence score, and brief reasoning.
 

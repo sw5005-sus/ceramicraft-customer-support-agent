@@ -76,6 +76,7 @@ class AgentState(TypedDict):
 
     messages: Annotated[list, add_messages]
     intent: str  # classifier output
+    last_intent: str  # previous turn's intent for continuity
     auth_token: str | None
     needs_confirm: bool
     confirmed: bool

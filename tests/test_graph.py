@@ -18,6 +18,7 @@ def test_agent_state_structure():
     state: AgentState = {
         "messages": [],
         "intent": "browse",
+        "last_intent": "",
         "auth_token": "token123",
         "needs_confirm": False,
         "confirmed": True,
@@ -25,6 +26,7 @@ def test_agent_state_structure():
 
     assert "messages" in state
     assert "intent" in state
+    assert "last_intent" in state
     assert "auth_token" in state
     assert "needs_confirm" in state
     assert "confirmed" in state

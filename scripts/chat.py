@@ -13,11 +13,7 @@ Usage:
 import argparse
 import sys
 
-try:
-    import httpx
-except ImportError:
-    print("ERROR: httpx not installed. Run: uv pip install httpx")
-    sys.exit(1)
+import httpx
 
 
 def main() -> None:

@@ -103,7 +103,7 @@ async def test_classifier_node_with_valid_message(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "browse"}
+    assert result == {"intent": "browse", "last_intent": "browse"}
     mock_structured_llm.ainvoke.assert_called_once()
 
     # Check that the prompt was formatted correctly
@@ -127,7 +127,7 @@ async def test_classifier_node_with_empty_messages(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat"}
+    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
     mock_structured_llm.ainvoke.assert_not_called()
 
 
@@ -150,7 +150,7 @@ async def test_classifier_node_with_no_human_messages(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat"}
+    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
     mock_structured_llm.ainvoke.assert_not_called()
 
 
@@ -178,7 +178,7 @@ async def test_classifier_node_with_validation_error(mock_logger, mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat"}
+    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
     mock_logger.exception.assert_called_once_with("Failed to parse classifier output")
 
 
@@ -204,7 +204,7 @@ async def test_classifier_node_with_generic_exception(mock_logger, mock_llm_cls)
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat"}
+    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
     mock_logger.exception.assert_called_once_with("Intent classification failed")
 
 
@@ -245,7 +245,7 @@ async def test_classifier_node_finds_latest_human_message(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "cart"}
+    assert result == {"intent": "cart", "last_intent": "cart"}
 
     # Verify the latest message was used
     call_args = mock_structured_llm.ainvoke.call_args[0][0]
@@ -262,3 +262,5 @@ def test_classifier_prompt_contains_intents():
     assert "JSON" in CLASSIFIER_PROMPT
     assert "intent" in CLASSIFIER_PROMPT
     assert "confidence" in CLASSIFIER_PROMPT
+    assert "last_intent" in CLASSIFIER_PROMPT
+    assert "{last_intent}" in CLASSIFIER_PROMPT

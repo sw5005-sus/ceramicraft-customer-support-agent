@@ -27,11 +27,7 @@ import threading
 import urllib.parse
 import webbrowser
 
-try:
-    import httpx
-except ImportError:
-    print("ERROR: httpx not installed. Run: uv pip install httpx")
-    sys.exit(1)
+import httpx
 
 # Zitadel configuration (same as mobile app login.tsx)
 ZITADEL_HOST = "https://cerami-t6ihrd.us1.zitadel.cloud"

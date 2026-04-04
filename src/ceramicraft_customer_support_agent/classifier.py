@@ -52,8 +52,12 @@ def build_classifier() -> Callable:
     async def classifier_node(state: dict) -> dict:
         """Classify the user's intent from their latest message."""
         messages = state.get("messages", [])
+        last_intent = state.get("last_intent", "")
         if not messages:
-            return {"intent": Intent.CHITCHAT.value}
+            return {
+                "intent": Intent.CHITCHAT.value,
+                "last_intent": Intent.CHITCHAT.value,
+            }
 
         # Get the latest user message
         user_message = None
@@ -63,29 +67,46 @@ def build_classifier() -> Callable:
                 break
 
         if not user_message:
-            return {"intent": Intent.CHITCHAT.value}
+            return {
+                "intent": Intent.CHITCHAT.value,
+                "last_intent": Intent.CHITCHAT.value,
+            }
 
         try:
-            # Format the prompt with the user message
-            prompt_content = get_classifier_prompt().format(message=user_message)
+            # Format the prompt with the user message and conversation context
+            prompt_template = get_classifier_prompt()
+            prompt_content = prompt_template.format(
+                message=user_message,
+                last_intent=last_intent or "none",
+            )
             result: IntentClassification = await llm.ainvoke(  # ty: ignore[invalid-assignment]
                 [HumanMessage(content=prompt_content)]
             )
 
             logger.info(
-                "Classified intent: %s (confidence: %.2f) - %s",
+                "Classified intent: %s (confidence: %.2f, last: %s) - %s",
                 result.intent,
                 result.confidence,
+                last_intent or "none",
                 result.reasoning,
             )
 
-            return {"intent": result.intent.value}
+            return {
+                "intent": result.intent.value,
+                "last_intent": result.intent.value,
+            }
 
         except ValidationError:
             logger.exception("Failed to parse classifier output")
-            return {"intent": Intent.CHITCHAT.value}
+            return {
+                "intent": Intent.CHITCHAT.value,
+                "last_intent": Intent.CHITCHAT.value,
+            }
         except Exception:
             logger.exception("Intent classification failed")
-            return {"intent": Intent.CHITCHAT.value}
+            return {
+                "intent": Intent.CHITCHAT.value,
+                "last_intent": Intent.CHITCHAT.value,
+            }
 
     return classifier_node
