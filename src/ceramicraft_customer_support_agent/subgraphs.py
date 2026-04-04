@@ -63,8 +63,11 @@ def _get_llm() -> ChatOpenAI:
 
 
 def _filter_tools(all_tools: Sequence[BaseTool], names: set[str]) -> list[BaseTool]:
-    """Filter tools by name set."""
-    return [tool for tool in all_tools if tool.name in names]
+    """Filter tools by name set and enable error handling."""
+    tools = [tool for tool in all_tools if tool.name in names]
+    for tool in tools:
+        tool.handle_tool_error = True
+    return tools
 
 
 def _build_domain_subgraph(
