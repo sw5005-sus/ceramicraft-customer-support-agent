@@ -5,9 +5,7 @@ the anyio / asyncio cancel-scope conflict that occurs when LangGraph's
 internal ``asyncio.create_task()`` runs inside FastMCP's anyio context.
 """
 
-import asyncio
 import logging
-import sys
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -187,25 +185,11 @@ def main() -> None:
     """Start the Customer Support Agent HTTP server."""
     settings = get_settings()
     logger.info("Starting Customer Support Agent (REST)...")
-
-    config = uvicorn.Config(
+    uvicorn.run(
         app,
         host=settings.AGENT_HOST,
         port=settings.AGENT_PORT,
     )
-    server = uvicorn.Server(config)
-
-    if sys.platform == "win32":
-        # psycopg async requires SelectorEventLoop, not the default
-        # ProactorEventLoop on Windows. Using asyncio.run() with an
-        # explicit loop_factory ensures the correct loop type is used
-        # throughout the entire application lifetime.
-        asyncio.run(
-            server.serve(),
-            loop_factory=asyncio.SelectorEventLoop,
-        )
-    else:
-        asyncio.run(server.serve())
 
 
 if __name__ == "__main__":
