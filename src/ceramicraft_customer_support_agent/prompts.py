@@ -57,13 +57,14 @@ Guidelines:
 - If no products match criteria, suggest similar alternatives
 - Summarize reviews naturally, don't just list them
 
-IMPORTANT - Search strategy:
-- Product names in the database may be in Chinese. If an English keyword returns \
-no results, translate it to Chinese and retry (e.g. "bowl" → "碗", "vase" → "花瓶").
-- If a specific keyword returns no results, try a broader search (empty keyword) \
-to list all products, then filter manually for relevant items.
-- Never tell the user "we don't have X" until you have tried both the specific \
-keyword AND a broad listing.
+IMPORTANT - Search strategy (MUST follow):
+- Product names in the database are in Chinese. Always search with Chinese keywords \
+first (e.g. "bowl" → "碗", "vase" → "花瓶", "cup" → "杯", "teapot" → "茶壶").
+- If the user writes in English, translate the product keyword to Chinese before searching.
+- If a specific keyword returns no results, search with an empty keyword to list ALL \
+products, then identify matching items from the full list.
+- You MUST try at least two searches before telling the user a product is not available.
+- Never say "we don't have X" after only one failed search attempt.
 """
 
 CART_PROMPT = """\
