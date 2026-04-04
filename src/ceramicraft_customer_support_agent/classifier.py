@@ -13,42 +13,6 @@ from ceramicraft_customer_support_agent.prompts import get_classifier_prompt
 
 logger = logging.getLogger(__name__)
 
-# Pattern to detect confirmation messages from the user.
-# Note: no \b — Chinese has no word boundaries.
-_CONFIRM_WORDS = (
-    "yes",
-    "y",
-    "ok",
-    "sure",
-    "confirm",
-    "confirmed",
-    "proceed",
-    "go ahead",
-    "do it",
-    "确认",
-    "确定",
-    "好的",
-    "好",
-    "是的",
-    "是",
-    "没问题",
-    "可以",
-    "行",
-    "下单",
-    "我确认",
-    "请继续",
-    "同意",
-    "对",
-)
-
-
-def _is_confirmation(text: str) -> bool:
-    """Check if text is a confirmation message."""
-    clean = text.strip().rstrip("!！.。").strip().lower()
-    return clean in _CONFIRM_WORDS or any(
-        clean.startswith(w) and len(clean) <= len(w) + 5 for w in _CONFIRM_WORDS
-    )
-
 
 class Intent(str, Enum):
     """User intent classifications."""
@@ -89,30 +53,6 @@ def build_classifier() -> Callable:
         """Classify the user's intent from their latest message."""
         messages = state.get("messages", [])
         last_intent = state.get("last_intent", "")
-        needs_confirm = state.get("needs_confirm", False)
-
-        # --- Confirmation shortcut ---
-        # When the guard has requested confirmation and the user replies
-        # with a confirmation phrase, skip classification entirely: mark
-        # confirmed=True and re-route to the same intent so the subgraph
-        # can retry the sensitive operation.
-        if needs_confirm and last_intent:
-            user_message = None
-            for msg in reversed(messages):
-                if hasattr(msg, "type") and msg.type == "human":
-                    user_message = msg.content
-                    break
-            if user_message and _is_confirmation(user_message):
-                logger.info(
-                    "User confirmed sensitive operation, routing back to %s",
-                    last_intent,
-                )
-                return {
-                    "intent": last_intent,
-                    "last_intent": last_intent,
-                    "confirmed": True,
-                    "needs_confirm": False,
-                }
 
         if not messages:
             return {

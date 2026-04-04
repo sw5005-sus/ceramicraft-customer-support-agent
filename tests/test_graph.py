@@ -20,16 +20,12 @@ def test_agent_state_structure():
         "intent": "browse",
         "last_intent": "",
         "auth_token": "token123",
-        "needs_confirm": False,
-        "confirmed": True,
     }
 
     assert "messages" in state
     assert "intent" in state
     assert "last_intent" in state
     assert "auth_token" in state
-    assert "needs_confirm" in state
-    assert "confirmed" in state
 
 
 @patch("ceramicraft_customer_support_agent.graph.build_classifier")

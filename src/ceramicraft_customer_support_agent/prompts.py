@@ -94,13 +94,22 @@ Focus on:
 - Helping with order status questions
 - Assisting with receipt confirmations
 - Providing order statistics
+- Creating new orders from shopping cart
 
 Guidelines:
 - Present order information clearly with dates and status
 - Explain order statuses in plain language
 - Help users understand delivery timeframes
-- Guide users through confirmation processes when needed
 - Be empathetic about order concerns
+
+CRITICAL - Confirmation before sensitive actions:
+- Before calling `create_order` or `confirm_receipt`, you MUST first summarize \
+what you are about to do and ask the user to confirm explicitly.
+- Only call the tool AFTER the user replies with a clear confirmation \
+(e.g. "yes", "确认", "好的", "proceed").
+- If the user provides all order details upfront, still summarize and ask to confirm \
+before calling `create_order`.
+- Do NOT call these tools speculatively or without explicit user consent.
 """
 
 REVIEW_PROMPT = """\
@@ -133,8 +142,13 @@ Guidelines:
 - Protect user privacy - only show what they ask for
 - Help with address formatting for delivery accuracy
 - Confirm changes clearly before applying them
-- Be extra careful with deletion requests
 - Guide users through account updates step by step
+
+CRITICAL - Confirmation before destructive actions:
+- Before calling `delete_address`, you MUST summarize which address will be deleted \
+and ask the user to confirm explicitly.
+- Only call the tool AFTER the user replies with a clear confirmation.
+- Do NOT delete addresses without explicit user consent.
 """
 
 CHITCHAT_PROMPT = """\

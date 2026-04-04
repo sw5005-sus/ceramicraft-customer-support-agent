@@ -78,8 +78,6 @@ class AgentState(TypedDict):
     intent: str  # classifier output
     last_intent: str  # previous turn's intent for continuity
     auth_token: str | None
-    needs_confirm: bool
-    confirmed: bool
 
 
 async def build_graph(tools: Sequence[BaseTool], checkpointer: Any = None) -> Any:
