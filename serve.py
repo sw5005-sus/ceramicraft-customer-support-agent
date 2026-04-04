@@ -5,7 +5,9 @@ the anyio / asyncio cancel-scope conflict that occurs when LangGraph's
 internal ``asyncio.create_task()`` runs inside FastMCP's anyio context.
 """
 
+import asyncio
 import logging
+import sys
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -183,11 +185,7 @@ async def reset(thread_id: str):
 
 def main() -> None:
     """Start the Customer Support Agent HTTP server."""
-    import sys
-
     if sys.platform == "win32":
-        import asyncio
-
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
     settings = get_settings()
