@@ -103,7 +103,12 @@ async def test_classifier_node_with_valid_message(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "browse", "last_intent": "browse"}
+    assert result == {
+        "intent": "browse",
+        "last_intent": "browse",
+        "confirmed": False,
+        "needs_confirm": False,
+    }
     mock_structured_llm.ainvoke.assert_called_once()
 
     # Check that the prompt was formatted correctly
@@ -127,7 +132,12 @@ async def test_classifier_node_with_empty_messages(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
+    assert result == {
+        "intent": "chitchat",
+        "last_intent": "chitchat",
+        "confirmed": False,
+        "needs_confirm": False,
+    }
     mock_structured_llm.ainvoke.assert_not_called()
 
 
@@ -150,7 +160,12 @@ async def test_classifier_node_with_no_human_messages(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
+    assert result == {
+        "intent": "chitchat",
+        "last_intent": "chitchat",
+        "confirmed": False,
+        "needs_confirm": False,
+    }
     mock_structured_llm.ainvoke.assert_not_called()
 
 
@@ -178,7 +193,12 @@ async def test_classifier_node_with_validation_error(mock_logger, mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
+    assert result == {
+        "intent": "chitchat",
+        "last_intent": "chitchat",
+        "confirmed": False,
+        "needs_confirm": False,
+    }
     mock_logger.exception.assert_called_once_with("Failed to parse classifier output")
 
 
@@ -204,7 +224,12 @@ async def test_classifier_node_with_generic_exception(mock_logger, mock_llm_cls)
 
     result = await classifier(state)
 
-    assert result == {"intent": "chitchat", "last_intent": "chitchat"}
+    assert result == {
+        "intent": "chitchat",
+        "last_intent": "chitchat",
+        "confirmed": False,
+        "needs_confirm": False,
+    }
     mock_logger.exception.assert_called_once_with("Intent classification failed")
 
 
@@ -245,7 +270,12 @@ async def test_classifier_node_finds_latest_human_message(mock_llm_cls):
 
     result = await classifier(state)
 
-    assert result == {"intent": "cart", "last_intent": "cart"}
+    assert result == {
+        "intent": "cart",
+        "last_intent": "cart",
+        "confirmed": False,
+        "needs_confirm": False,
+    }
 
     # Verify the latest message was used
     call_args = mock_structured_llm.ainvoke.call_args[0][0]
@@ -264,3 +294,62 @@ def test_classifier_prompt_contains_intents():
     assert "confidence" in CLASSIFIER_PROMPT
     assert "last_intent" in CLASSIFIER_PROMPT
     assert "{last_intent}" in CLASSIFIER_PROMPT
+
+
+@patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
+async def test_classifier_confirmation_shortcut(mock_llm_cls):
+    """When needs_confirm=True and user confirms, skip classification."""
+    mock_llm_instance = MagicMock()
+    mock_structured_llm = MagicMock()
+    mock_llm_instance.with_structured_output.return_value = mock_structured_llm
+    mock_llm_cls.return_value = mock_llm_instance
+
+    classifier = build_classifier()
+
+    mock_message = MagicMock()
+    mock_message.type = "human"
+    mock_message.content = "确认"
+
+    state = {
+        "messages": [mock_message],
+        "needs_confirm": True,
+        "last_intent": "order",
+    }
+
+    result = await classifier(state)
+
+    assert result == {
+        "intent": "order",
+        "last_intent": "order",
+        "confirmed": True,
+        "needs_confirm": False,
+    }
+    # LLM should NOT be called — shortcutted
+    mock_structured_llm.ainvoke.assert_not_called()
+
+
+@patch("ceramicraft_customer_support_agent.classifier.ChatOpenAI")
+async def test_classifier_no_shortcut_without_needs_confirm(mock_llm_cls):
+    """Without needs_confirm, 'yes' should be classified normally."""
+    mock_llm_instance = MagicMock()
+    mock_structured_llm = MagicMock()
+    mock_llm_instance.with_structured_output.return_value = mock_structured_llm
+    mock_llm_cls.return_value = mock_llm_instance
+
+    mock_result = IntentClassification(
+        intent=Intent.CHITCHAT, confidence=0.9, reasoning="Generic yes"
+    )
+    mock_structured_llm.ainvoke = AsyncMock(return_value=mock_result)
+
+    classifier = build_classifier()
+
+    mock_message = MagicMock()
+    mock_message.type = "human"
+    mock_message.content = "yes"
+
+    state = {"messages": [mock_message], "needs_confirm": False, "last_intent": "order"}
+
+    result = await classifier(state)
+
+    assert result["confirmed"] is False
+    mock_structured_llm.ainvoke.assert_called_once()
