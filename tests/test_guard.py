@@ -139,8 +139,8 @@ def test_guard_node_with_confirmation_already_given():
 
     result = guard(state)
 
-    # Should not add confirmation message
-    assert result == {}
+    # Should not add confirmation message, but should reset flags
+    assert result == {"confirmed": False, "needs_confirm": False}
 
 
 @patch("ceramicraft_customer_support_agent.guard.logger")

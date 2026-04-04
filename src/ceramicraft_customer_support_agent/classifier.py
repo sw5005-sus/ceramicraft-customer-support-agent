@@ -1,7 +1,6 @@
 """Intent classification node for routing user queries."""
 
 import logging
-import re
 from collections.abc import Callable
 from enum import Enum
 
@@ -15,11 +14,40 @@ from ceramicraft_customer_support_agent.prompts import get_classifier_prompt
 logger = logging.getLogger(__name__)
 
 # Pattern to detect confirmation messages from the user.
-_CONFIRM_PATTERN = re.compile(
-    r"^(yes|y|ok|确认|确定|好的|好|是的|是|proceed|go ahead|confirm|confirmed|"
-    r"sure|do it|没问题|可以|行|下单|我确认|请继续)\b",
-    re.IGNORECASE,
+# Note: no \b — Chinese has no word boundaries.
+_CONFIRM_WORDS = (
+    "yes",
+    "y",
+    "ok",
+    "sure",
+    "confirm",
+    "confirmed",
+    "proceed",
+    "go ahead",
+    "do it",
+    "确认",
+    "确定",
+    "好的",
+    "好",
+    "是的",
+    "是",
+    "没问题",
+    "可以",
+    "行",
+    "下单",
+    "我确认",
+    "请继续",
+    "同意",
+    "对",
 )
+
+
+def _is_confirmation(text: str) -> bool:
+    """Check if text is a confirmation message."""
+    clean = text.strip().rstrip("!！.。").strip().lower()
+    return clean in _CONFIRM_WORDS or any(
+        clean.startswith(w) and len(clean) <= len(w) + 5 for w in _CONFIRM_WORDS
+    )
 
 
 class Intent(str, Enum):
@@ -74,7 +102,7 @@ def build_classifier() -> Callable:
                 if hasattr(msg, "type") and msg.type == "human":
                     user_message = msg.content
                     break
-            if user_message and _CONFIRM_PATTERN.search(user_message.strip()):
+            if user_message and _is_confirmation(user_message):
                 logger.info(
                     "User confirmed sensitive operation, routing back to %s",
                     last_intent,
@@ -90,8 +118,6 @@ def build_classifier() -> Callable:
             return {
                 "intent": Intent.CHITCHAT.value,
                 "last_intent": Intent.CHITCHAT.value,
-                "confirmed": False,
-                "needs_confirm": False,
             }
 
         # Get the latest user message
@@ -105,8 +131,6 @@ def build_classifier() -> Callable:
             return {
                 "intent": Intent.CHITCHAT.value,
                 "last_intent": Intent.CHITCHAT.value,
-                "confirmed": False,
-                "needs_confirm": False,
             }
 
         try:
@@ -131,8 +155,6 @@ def build_classifier() -> Callable:
             return {
                 "intent": result.intent.value,
                 "last_intent": result.intent.value,
-                "confirmed": False,
-                "needs_confirm": False,
             }
 
         except ValidationError:
@@ -140,16 +162,12 @@ def build_classifier() -> Callable:
             return {
                 "intent": Intent.CHITCHAT.value,
                 "last_intent": Intent.CHITCHAT.value,
-                "confirmed": False,
-                "needs_confirm": False,
             }
         except Exception:
             logger.exception("Intent classification failed")
             return {
                 "intent": Intent.CHITCHAT.value,
                 "last_intent": Intent.CHITCHAT.value,
-                "confirmed": False,
-                "needs_confirm": False,
             }
 
     return classifier_node

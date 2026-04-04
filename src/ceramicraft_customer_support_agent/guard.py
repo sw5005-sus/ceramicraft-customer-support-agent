@@ -66,7 +66,14 @@ def build_guard() -> Callable:
                         break
 
         new_messages = []
-        updates = {}
+        updates: dict = {}
+
+        # After a confirmed sensitive operation, reset the flags so the
+        # next turn starts fresh.  We do this unconditionally — if there's
+        # nothing to confirm the flags are already False.
+        if confirmed:
+            updates["confirmed"] = False
+            updates["needs_confirm"] = False
 
         # Handle auth requirement
         if needs_auth_prompt and not auth_token:
