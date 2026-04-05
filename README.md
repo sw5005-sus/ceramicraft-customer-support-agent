@@ -47,7 +47,7 @@ Service `CustomerSupportAgent` on port `50051` (configurable via `AGENT_GRPC_POR
 
 | RPC | Request | Response | Description |
 |-----|---------|----------|-------------|
-| `Chat` | `ChatRequest(message, thread_id?, auth_token?)` | `ChatResponse(reply, thread_id)` | Same as POST /chat |
+| `Chat` | `ChatRequest(message, thread_id?)` | `ChatResponse(reply, thread_id)` | Same as POST /chat. Auth via metadata key `authorization` (Bearer scheme). |
 | `Reset` | `ResetRequest(thread_id)` | `ResetResponse(status, message)` | Same as POST /reset |
 
 Proto definition: [`protos/cs_agent.proto`](protos/cs_agent.proto)
