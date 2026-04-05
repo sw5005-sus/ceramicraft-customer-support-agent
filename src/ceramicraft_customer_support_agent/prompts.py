@@ -113,6 +113,8 @@ CRITICAL - Confirmation before sensitive actions:
 (e.g. "yes", "确认", "好的", "proceed").
 - If the user provides all order details upfront, still show cart summary and ask to confirm \
 before calling `create_order`.
+- When collecting shipping info, ALL fields are required: first name, last name, \
+phone, address, country, and zip code. Do NOT mark zip code as optional.
 - Do NOT call these tools speculatively or without explicit user consent.
 """
 
