@@ -191,8 +191,8 @@ async def _start() -> None:
     # --- HTTP (FastAPI + uvicorn) ---
     http_config = uvicorn.Config(
         app,
-        host=settings.AGENT_HOST,
-        port=settings.AGENT_PORT,
+        host=settings.CS_AGENT_HTTP_HOST,
+        port=settings.CS_AGENT_HTTP_PORT,
         log_level="info",
     )
     http_server = uvicorn.Server(http_config)
@@ -222,7 +222,7 @@ async def _start() -> None:
             ),
             grpc_server,
         )
-        grpc_addr = f"{settings.AGENT_GRPC_HOST}:{settings.AGENT_GRPC_PORT}"
+        grpc_addr = f"{settings.CS_AGENT_GRPC_HOST}:{settings.CS_AGENT_GRPC_PORT}"
         grpc_server.add_insecure_port(grpc_addr)
         await grpc_server.start()
         logger.info("gRPC server listening on %s", grpc_addr)

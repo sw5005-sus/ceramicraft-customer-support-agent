@@ -8,8 +8,10 @@ def test_settings_defaults():
     settings = Settings(_env_file=None)  # ty: ignore[unknown-argument]
     assert settings.MCP_SERVER_URL == "http://mcp-server:8080/mcp"
     assert settings.OPENAI_MODEL == "gpt-4o"
-    assert settings.AGENT_HOST == "0.0.0.0"
-    assert settings.AGENT_PORT == 8080
+    assert settings.CS_AGENT_HTTP_HOST == "0.0.0.0"
+    assert settings.CS_AGENT_HTTP_PORT == 8080
+    assert settings.CS_AGENT_GRPC_HOST == "[::]"
+    assert settings.CS_AGENT_GRPC_PORT == 50051
     assert settings.LANGSMITH_PROJECT == "ceramicraft-cs-agent"
 
 

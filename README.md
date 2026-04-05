@@ -80,10 +80,10 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 | `MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server:8080/mcp` |
 | `OPENAI_API_KEY` | OpenAI API key | *(required)* |
 | `OPENAI_MODEL` | Model name | `gpt-4o` |
-| `AGENT_HOST` | HTTP bind address | `0.0.0.0` |
-| `AGENT_PORT` | HTTP server port | `8080` |
-| `AGENT_GRPC_HOST` | gRPC bind address | `[::]` |
-| `AGENT_GRPC_PORT` | gRPC server port | `50051` |
+| `CS_AGENT_HTTP_HOST` | HTTP bind address | `0.0.0.0` |
+| `CS_AGENT_HTTP_PORT` | HTTP server port | `8080` |
+| `CS_AGENT_GRPC_HOST` | gRPC bind address | `[::]` |
+| `CS_AGENT_GRPC_PORT` | gRPC server port | `50051` |
 | `POSTGRES_USER` | PostgreSQL user | *(required)* |
 | `POSTGRES_PASSWORD` | PostgreSQL password | *(required)* |
 | `POSTGRES_HOST` | PostgreSQL host | *(required)* |
