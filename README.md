@@ -8,7 +8,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 
 ```
   User ── POST /chat ──▶ FastAPI ──▶ LangGraph StateGraph
-                                          │
+       ── gRPC Chat  ──▶ gRPC   ──┘        │
                                      Classifier (LLM)
                                           │
                           ┌───────────────┼───────────────┐
@@ -41,6 +41,17 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 | `/cs-agent/v1/ping` | GET | Readiness probe (503 until ready) |
 | `/docs` | GET | Swagger UI |
 
+## gRPC API
+
+Service `CustomerSupportAgent` on port `50051` (configurable via `AGENT_GRPC_PORT`).
+
+| RPC | Request | Response | Description |
+|-----|---------|----------|-------------|
+| `Chat` | `ChatRequest(message, thread_id?, auth_token?)` | `ChatResponse(reply, thread_id)` | Same as POST /chat |
+| `Reset` | `ResetRequest(thread_id)` | `ResetResponse(status, message)` | Same as POST /reset |
+
+Proto definition: [`protos/cs_agent.proto`](protos/cs_agent.proto)
+
 ## MCP Tools
 
 | Category | Tools | Auth |
@@ -69,8 +80,10 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 | `MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server:8080/mcp` |
 | `OPENAI_API_KEY` | OpenAI API key | *(required)* |
 | `OPENAI_MODEL` | Model name | `gpt-4o` |
-| `AGENT_HOST` | Bind address | `0.0.0.0` |
-| `AGENT_PORT` | Server port | `8080` |
+| `AGENT_HOST` | HTTP bind address | `0.0.0.0` |
+| `AGENT_PORT` | HTTP server port | `8080` |
+| `AGENT_GRPC_HOST` | gRPC bind address | `[::]` |
+| `AGENT_GRPC_PORT` | gRPC server port | `50051` |
 | `POSTGRES_USER` | PostgreSQL user | *(required)* |
 | `POSTGRES_PASSWORD` | PostgreSQL password | *(required)* |
 | `POSTGRES_HOST` | PostgreSQL host | *(required)* |

@@ -8,7 +8,7 @@ _最后更新：2026-03-31_
 
 | 问题 | 决定 |
 |------|------|
-| 对外接口 | FastAPI REST (`POST /chat`, `POST /reset`, `GET /cs-agent/v1/ping`) |
+| 对外接口 | FastAPI REST (`POST /chat`, `POST /reset`, `GET /cs-agent/v1/ping`) + gRPC (`Chat`, `Reset` on port 50051) |
 | 对话状态 | PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）；POSTGRES_HOST 必填，未配置则启动报错 |
 | 鉴权 | Agent 不验证 token，纯透传给下游 MCP Server（由 MCP Server 统一验证） |
 | 敏感操作 | 下单前展示购物车并要求确认，确认收货和删地址也需确认；加购物车不需确认 |
@@ -229,9 +229,13 @@ ceramicraft-customer-support-agent/
 │   ├── guard.py                      # 安全守卫节点（auth 兜底检查 + 敏感操作确认）
 │   ├── nodes.py                      # 轻量节点（chitchat + escalate，无工具）
 │   ├── subgraphs.py                  # 领域子图（5 个 stateless ReAct agent builder）
+│   ├── grpc_service.py                   # gRPC servicer (async Chat + Reset, mirrors REST endpoints)
 │   ├── mcp_client.py                 # MCP Client（PersistentMCPClient 单例，connection 模式 + auth interceptor）
 │   ├── mlflow_utils.py               # MLflow tracing init + tag_trace() helper (tracing failures non-fatal)
-│   └── prompts.py                    # System prompt 模板（主 + 6 个领域）
+│   ├── prompts.py                    # System prompt 模板（主 + 6 个领域）
+│   └── pb/                           # Generated protobuf (cs_agent_pb2*.py)
+├── protos/
+│   └── cs_agent.proto                    # gRPC service definition (Chat + Reset)
 ├── tests/
 │   ├── conftest.py
 │   ├── test_agent.py
@@ -243,6 +247,7 @@ ceramicraft-customer-support-agent/
 │   ├── test_nodes.py
 │   ├── test_prompts.py
 │   ├── test_serve.py                 # FastAPI 端点测试（新增）
+│   ├── test_grpc_service.py          # gRPC servicer 测试（Chat + Reset）
 │   └── test_subgraphs.py
 ├── scripts/
 │   └── run_evaluation.py             # MLflow evaluation script (12-case test dataset, logs to ceramicraft-cs-agent-eval)
