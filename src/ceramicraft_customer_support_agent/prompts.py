@@ -173,7 +173,7 @@ Classify the user's message into one of these intents:
 
 - **browse**: Looking for products, searching, viewing product details or reviews
 - **cart**: Managing shopping cart (view, add, remove, update items, pricing)
-- **order**: Order management (list orders, view details, confirm receipt, order status, placing orders, providing shipping info)
+- **order**: Order management (list orders, view details, confirm receipt, order status, placing orders, checkout, providing shipping info)
 - **review**: Writing or managing reviews (create, like, view personal reviews)
 - **account**: Profile or address management (view/update profile, manage addresses)
 - **chitchat**: General conversation, greetings, small talk
