@@ -5,7 +5,7 @@ package ceramicraft.cs_agent;
 message ChatRequest {
     string message = 1;
     string thread_id = 2;       // optional; empty string = new conversation
-    string auth_token = 3;      // optional; Bearer token for downstream MCP calls
+    // Auth token passed via gRPC metadata key "authorization" (Bearer scheme)
 }
 
 message ChatResponse {

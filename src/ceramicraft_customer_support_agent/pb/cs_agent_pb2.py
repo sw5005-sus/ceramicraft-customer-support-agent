@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x63s_agent.proto\x12\x14\x63\x65ramicraft.cs_agent\"E\n\x0b\x43hatRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x11\n\tthread_id\x18\x02 \x01(\t\x12\x12\n\nauth_token\x18\x03 \x01(\t\"0\n\x0c\x43hatResponse\x12\r\n\x05reply\x18\x01 \x01(\t\x12\x11\n\tthread_id\x18\x02 \x01(\t\"!\n\x0cResetRequest\x12\x11\n\tthread_id\x18\x01 \x01(\t\"0\n\rResetResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0f\n\x07message\x18\x02 \x01(\t2\xb7\x01\n\x14\x43ustomerSupportAgent\x12M\n\x04\x43hat\x12!.ceramicraft.cs_agent.ChatRequest\x1a\".ceramicraft.cs_agent.ChatResponse\x12P\n\x05Reset\x12\".ceramicraft.cs_agent.ResetRequest\x1a#.ceramicraft.cs_agent.ResetResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0e\x63s_agent.proto\x12\x14\x63\x65ramicraft.cs_agent\"1\n\x0b\x43hatRequest\x12\x0f\n\x07message\x18\x01 \x01(\t\x12\x11\n\tthread_id\x18\x02 \x01(\t\"0\n\x0c\x43hatResponse\x12\r\n\x05reply\x18\x01 \x01(\t\x12\x11\n\tthread_id\x18\x02 \x01(\t\"!\n\x0cResetRequest\x12\x11\n\tthread_id\x18\x01 \x01(\t\"0\n\rResetResponse\x12\x0e\n\x06status\x18\x01 \x01(\t\x12\x0f\n\x07message\x18\x02 \x01(\t2\xb7\x01\n\x14\x43ustomerSupportAgent\x12M\n\x04\x43hat\x12!.ceramicraft.cs_agent.ChatRequest\x1a\".ceramicraft.cs_agent.ChatResponse\x12P\n\x05Reset\x12\".ceramicraft.cs_agent.ResetRequest\x1a#.ceramicraft.cs_agent.ResetResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -32,13 +32,13 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'cs_agent_pb2', _globals)
 if not _descriptor._USE_C_DESCRIPTORS:
   DESCRIPTOR._loaded_options = None
   _globals['_CHATREQUEST']._serialized_start=40
-  _globals['_CHATREQUEST']._serialized_end=109
-  _globals['_CHATRESPONSE']._serialized_start=111
-  _globals['_CHATRESPONSE']._serialized_end=159
-  _globals['_RESETREQUEST']._serialized_start=161
-  _globals['_RESETREQUEST']._serialized_end=194
-  _globals['_RESETRESPONSE']._serialized_start=196
-  _globals['_RESETRESPONSE']._serialized_end=244
-  _globals['_CUSTOMERSUPPORTAGENT']._serialized_start=247
-  _globals['_CUSTOMERSUPPORTAGENT']._serialized_end=430
+  _globals['_CHATREQUEST']._serialized_end=89
+  _globals['_CHATRESPONSE']._serialized_start=91
+  _globals['_CHATRESPONSE']._serialized_end=139
+  _globals['_RESETREQUEST']._serialized_start=141
+  _globals['_RESETREQUEST']._serialized_end=174
+  _globals['_RESETRESPONSE']._serialized_start=176
+  _globals['_RESETRESPONSE']._serialized_end=224
+  _globals['_CUSTOMERSUPPORTAGENT']._serialized_start=227
+  _globals['_CUSTOMERSUPPORTAGENT']._serialized_end=410
 # @@protoc_insertion_point(module_scope)

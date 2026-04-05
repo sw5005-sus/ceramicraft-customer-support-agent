@@ -27,7 +27,11 @@ class CustomerSupportAgentServicer(
         context: grpc.aio.ServicerContext,
     ) -> cs_agent_pb2.ChatResponse:
         thread_id = request.thread_id or uuid.uuid4().hex
-        token = request.auth_token or None
+
+        # Extract Bearer token from gRPC metadata (same as HTTP Authorization header)
+        metadata = dict(context.invocation_metadata())
+        auth_header = metadata.get("authorization", "")
+        token = auth_header[7:] if auth_header.startswith("Bearer ") else None
 
         try:
             set_auth_token(token)
