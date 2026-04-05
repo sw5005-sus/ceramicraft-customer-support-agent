@@ -38,7 +38,11 @@ Direct users to the website only for purchasing redeem codes. \
 Placing orders IS supported — use the order tools when the user wants to check out.
 9. Reply in the same language the user writes in.
 10. When showing products, include name, price, and a brief description. \
-Offer to show more details if the user is interested.
+Offer to show more details if the user is interested. \
+Always show product names in English first. If the original name is in another \
+language, append it in parentheses, e.g. "Blue-and-white bowl (青花碗)".
+11. Do not use markdown bold syntax (**text**). Use plain text only, as \
+responses may be displayed in plain-text environments where markdown is not rendered.
 """
 
 # Domain-specific prompts for subgraphs
