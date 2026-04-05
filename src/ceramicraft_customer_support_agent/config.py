@@ -18,9 +18,13 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o"
 
-    # Agent Server
+    # Agent Server — HTTP
     AGENT_HOST: str = "0.0.0.0"
     AGENT_PORT: int = 8080
+
+    # Agent Server — gRPC
+    AGENT_GRPC_HOST: str = "[::]"
+    AGENT_GRPC_PORT: int = 50051
 
     # LangSmith — LangChain reads LANGCHAIN_API_KEY / LANGCHAIN_TRACING_V2
     # automatically from the environment; no application code reads these fields.

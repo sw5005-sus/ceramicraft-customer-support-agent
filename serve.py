@@ -1,16 +1,17 @@
-"""HTTP entrypoint for the Customer Support Agent.
+"""Entrypoint for the Customer Support Agent.
 
-Exposes a lightweight FastAPI REST interface instead of MCP, avoiding
-the anyio / asyncio cancel-scope conflict that occurs when LangGraph's
-internal ``asyncio.create_task()`` runs inside FastMCP's anyio context.
+Starts both an HTTP (FastAPI/uvicorn) server and a gRPC server,
+following the same dual-server pattern as notification-ms.
 """
 
+import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
 import dttb
+import grpc
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -18,11 +19,15 @@ from pydantic import BaseModel, Field
 
 from ceramicraft_customer_support_agent.config import get_settings
 from ceramicraft_customer_support_agent.graph import build_checkpointer, build_graph
+from ceramicraft_customer_support_agent.grpc_service import (
+    CustomerSupportAgentServicer,
+)
 from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token
 from ceramicraft_customer_support_agent.mlflow_utils import (
     init_mlflow_tracing,
     tag_trace,
 )
+from ceramicraft_customer_support_agent.pb import cs_agent_pb2_grpc
 
 # Apply dttb tracebacks for timestamps on exceptions
 dttb.apply()
@@ -179,15 +184,63 @@ async def reset(thread_id: str):
     )
 
 
-def main() -> None:
-    """Start the Customer Support Agent HTTP server."""
+async def _start() -> None:
+    """Start both HTTP and gRPC servers (notification-ms pattern)."""
     settings = get_settings()
-    logger.info("Starting Customer Support Agent (REST)...")
-    uvicorn.run(
+
+    # --- HTTP (FastAPI + uvicorn) ---
+    http_config = uvicorn.Config(
         app,
         host=settings.AGENT_HOST,
         port=settings.AGENT_PORT,
+        log_level="info",
     )
+    http_server = uvicorn.Server(http_config)
+
+    # --- gRPC ---
+    # Agent and checkpointer are initialised by FastAPI lifespan.
+    # We need them for the gRPC servicer, but they're not available until
+    # the HTTP server starts.  Use a simple event to synchronise.
+    agent_ready = asyncio.Event()
+    _original_lifespan = app.router.lifespan_context
+
+    @asynccontextmanager
+    async def _patched_lifespan(a):  # noqa: ANN001
+        async with _original_lifespan(a) as val:
+            agent_ready.set()
+            yield val
+
+    app.router.lifespan_context = _patched_lifespan
+
+    async def _run_grpc() -> None:
+        await agent_ready.wait()
+        grpc_server = grpc.aio.server()
+        cs_agent_pb2_grpc.add_CustomerSupportAgentServicer_to_server(
+            CustomerSupportAgentServicer(
+                agent=_agent_cache["agent"],
+                checkpointer=_agent_cache["checkpointer"],
+            ),
+            grpc_server,
+        )
+        grpc_addr = f"{settings.AGENT_GRPC_HOST}:{settings.AGENT_GRPC_PORT}"
+        grpc_server.add_insecure_port(grpc_addr)
+        await grpc_server.start()
+        logger.info("gRPC server listening on %s", grpc_addr)
+        await grpc_server.wait_for_termination()
+
+    try:
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(http_server.serve())
+            tg.create_task(_run_grpc())
+    except BaseException:
+        logger.info("Shutting down servers")
+        raise
+
+
+def main() -> None:
+    """Start the Customer Support Agent (HTTP + gRPC)."""
+    logger.info("Starting Customer Support Agent (HTTP + gRPC)...")
+    asyncio.run(_start())
 
 
 if __name__ == "__main__":
