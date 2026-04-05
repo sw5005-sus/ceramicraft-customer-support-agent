@@ -11,7 +11,7 @@ _最后更新：2026-03-31_
 | 对外接口 | FastAPI REST (`POST /chat`, `POST /reset`, `GET /cs-agent/v1/ping`) |
 | 对话状态 | PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）；POSTGRES_HOST 必填，未配置则启动报错 |
 | 鉴权 | Agent 不验证 token，纯透传给下游 MCP Server（由 MCP Server 统一验证） |
-| 敏感操作 | 支付、充值暂不实现；下单和确认收货需 Guard 确认 |
+| 敏感操作 | 下单前展示购物车并要求确认，确认收货和删地址也需确认；加购物车不需确认 |
 | Agent 架构 | LangGraph StateGraph：意图分类 → 条件路由 → 领域子图（ReAct）→ 安全守卫 |
 | LLM | OpenAI GPT-4o |
 | 设计原则 | Prompt Engineering + Context Engineering + 渐进式披露 |
@@ -37,7 +37,7 @@ _最后更新：2026-03-31_
         ├──→ Cart Subgraph     (get_cart, add/update/remove_cart_item, estimate_cart_price, search_products)
         ├──→ Order Subgraph    (list_my_orders, get_order_detail, confirm_receipt, get_order_stats, create_order)
         ├──→ Review Subgraph   (create_review, like_review, get_user_reviews, list_product_reviews)
-        ├──→ Account Subgraph  (get/update_my_profile, addresses CRUD)
+        ├──→ Account Subgraph  (get/update_my_profile, addresses CRUD, get_pay_account, top_up_account)
         ├──→ Chitchat Node     (纯 LLM，无工具)
         └──→ Escalate Node     (固定转人工消息)
                 │
@@ -173,8 +173,8 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - list/create/update/delete_address（delete 需 Guard 确认）
 - Agent 能力：查看和修改个人信息、地址管理
 
-### ~~2.6 支付~~ → 暂不实现
-### ~~2.7 充值~~ → 暂不实现
+### ~~2.6 支付~~ → 已实现（get_pay_account + top_up_account 归入 Account 子图）
+### ~~2.7 充值~~ → 已实现（通过 redeem code 充值）
 
 ---
 
@@ -255,9 +255,9 @@ ceramicraft-customer-support-agent/
 
 ## 暂不实现（Backlog）
 
-- [ ] top_up_account / get_pay_account（支付）— 需安全措施
+- [x] ~~top_up_account / get_pay_account（支付）~~ — 已实现，归入 Account 子图
 - [ ] register_push_token（通知）— 优先级低
-- [ ] PostgreSQL checkpoint 持久化
+- [x] ~~PostgreSQL checkpoint 持久化~~ — 已完成
 - [x] ~~Token 端到端透传到下游 MCP Server~~ — 已完成（ContextVar + _AuthInterceptor）
 - [x] ~~thread_id 改为可选，服务端自动生成，response 返回~~ — 已完成
 - [x] ~~子图拆分（按意图路由）~~ — 已完成
