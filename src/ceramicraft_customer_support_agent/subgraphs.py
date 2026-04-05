@@ -50,6 +50,8 @@ ACCOUNT_TOOLS = {
     "create_address",
     "update_address",
     "delete_address",
+    "get_pay_account",
+    "top_up_account",
 }
 
 
