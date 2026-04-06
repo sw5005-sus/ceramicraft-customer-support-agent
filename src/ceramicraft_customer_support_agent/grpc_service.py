@@ -29,7 +29,7 @@ class CustomerSupportAgentServicer(
         thread_id = request.thread_id or uuid.uuid4().hex
 
         # Extract Bearer token from gRPC metadata (same as HTTP Authorization header)
-        metadata = dict(context.invocation_metadata())
+        metadata = dict(context.invocation_metadata())  # ty: ignore[no-matching-overload]
         auth_header = metadata.get("authorization", "")
         token = auth_header[7:] if auth_header.startswith("Bearer ") else None
 

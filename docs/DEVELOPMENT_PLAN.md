@@ -261,7 +261,7 @@ ceramicraft-customer-support-agent/
 ## 暂不实现（Backlog）
 
 - [x] ~~top_up_account / get_pay_account（支付）~~ — 已实现，归入 Account 子图
-- [ ] register_push_token（通知）— 优先级低
+- [x] ~~register_push_token（通知）~~ — 不实现，应由前端直接调 notification-ms API
 - [x] ~~PostgreSQL checkpoint 持久化~~ — 已完成
 - [x] ~~Token 端到端透传到下游 MCP Server~~ — 已完成（ContextVar + _AuthInterceptor）
 - [x] ~~thread_id 改为可选，服务端自动生成，response 返回~~ — 已完成
