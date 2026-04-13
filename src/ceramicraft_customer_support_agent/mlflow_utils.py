@@ -27,11 +27,18 @@ def init_mlflow_tracing() -> None:
     mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
     mlflow.set_experiment(settings.CS_AGENT_MLFLOW_EXPERIMENT_NAME)
 
-    if hasattr(mlflow, "langchain") and hasattr(mlflow.langchain, "autolog"):
-        try:
-            mlflow.langchain.autolog(log_traces=True)
-        except TypeError:
-            mlflow.langchain.autolog()
+    try:
+        langchain_mod = getattr(mlflow, "langchain", None)
+    except Exception:
+        langchain_mod = None
+
+    if langchain_mod is not None:
+        autolog_fn = getattr(langchain_mod, "autolog", None)
+        if autolog_fn is not None:
+            try:
+                autolog_fn(log_traces=True)
+            except TypeError:
+                autolog_fn()
 
     logger.info(
         "MLflow tracing initialized. tracking_uri=%s experiment=%s",
