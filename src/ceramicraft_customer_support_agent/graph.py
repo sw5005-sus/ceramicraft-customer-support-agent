@@ -202,7 +202,7 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
     async def subgraph_node(state: AgentState) -> dict:
         """Invoke a domain subgraph with the current state."""
         messages = _sanitize_messages(state.get("messages", []))
-        messages = _trim_messages(messages, get_settings().AGENT_MAX_HISTORY)
+        messages = _trim_messages(messages, get_settings().CS_AGENT_MAX_HISTORY)
 
         # Inject auth context so the LLM knows whether to attempt
         # authenticated operations or ask the user to log in.
