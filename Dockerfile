@@ -12,7 +12,6 @@ COPY serve.py ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev && \
     find .venv -type d -name "__pycache__" -exec rm -rf {} + && \
-    find .venv -type d -name "*.dist-info" -exec rm -rf {} + && \
     find .venv -type f -name "*.pyc" -delete
 
 # ---- runtime stage ----
