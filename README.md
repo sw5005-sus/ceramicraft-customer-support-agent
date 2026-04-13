@@ -43,7 +43,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 
 ## gRPC API
 
-Service `CustomerSupportAgent` on port `50051` (configurable via `AGENT_GRPC_PORT`).
+Service `CustomerSupportAgent` on port `50051` (configurable via `CS_AGENT_GRPC_PORT`).
 
 | RPC | Request | Response | Description |
 |-----|---------|----------|-------------|
