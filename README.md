@@ -77,7 +77,7 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `CS_AGENT_MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server:8080/mcp` |
+| `CS_AGENT_MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server-svc:8080/mcp` |
 | `CS_AGENT_OPENAI_API_KEY` | OpenAI API key | *(required)* |
 | `CS_AGENT_OPENAI_MODEL` | Model name | `gpt-4o` |
 | `CS_AGENT_HTTP_HOST` | HTTP bind address | `0.0.0.0` |
