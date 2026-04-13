@@ -1,52 +1,10 @@
 # Snyk (https://snyk.io) policy file
-# Ignore upstream mlflow CVEs with no available patch
 version: v1.25.0
 ignore:
-  SNYK-PYTHON-MLFLOW-7210300:
+  SNYK-PYTHON-MLFLOWSKINNY-15922302:
     - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210309:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210311:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210331:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210332:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210333:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210334:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210335:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-7210336:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-15325638:
-    - '*':
-        reason: Upstream mlflow CVE, no patch available
-        expires: 2026-06-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOW-15870196:
-    - '*':
-        reason: Upstream mlflow CVE (mlflow@3.10.1), no patch available
-        expires: 2026-09-30T00:00:00.000Z
-  SNYK-PYTHON-MLFLOWSKINNY-15870197:
-    - '*':
-        reason: Upstream mlflow-skinny CVE (mlflow-skinny@3.10.1), no patch available
-        expires: 2026-09-30T00:00:00.000Z
+        reason: >-
+          Upstream mlflow-skinny vulnerability with no fix available.
+          We only use MlflowClient (read-only tracing); MLflow server
+          is not exposed. Aligned with secure-agent team approach.
+        expires: 2026-07-13T00:00:00.000Z
