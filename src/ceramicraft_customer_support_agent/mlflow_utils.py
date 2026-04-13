@@ -28,17 +28,18 @@ def init_mlflow_tracing() -> None:
     mlflow.set_experiment(settings.CS_AGENT_MLFLOW_EXPERIMENT_NAME)
 
     try:
-        langchain_mod = getattr(mlflow, "langchain", None)
-    except Exception:
-        langchain_mod = None
+        from mlflow.langchain import autolog as langchain_autolog
 
-    if langchain_mod is not None:
-        autolog_fn = getattr(langchain_mod, "autolog", None)
-        if autolog_fn is not None:
-            try:
-                autolog_fn(log_traces=True)
-            except TypeError:
-                autolog_fn()
+        langchain_autolog(log_traces=True)
+    except TypeError:
+        try:
+            langchain_autolog()  # type: ignore[possibly-undefined]
+        except Exception:
+            logger.info("mlflow.langchain.autolog unavailable; skipping.")
+    except Exception:
+        # mlflow-skinny: mlflow.langchain requires pandas (not installed).
+        # Base MLflow tracing (tracking URI + experiment) still works.
+        logger.info("mlflow.langchain.autolog unavailable (mlflow-skinny); skipping.")
 
     logger.info(
         "MLflow tracing initialized. tracking_uri=%s experiment=%s",

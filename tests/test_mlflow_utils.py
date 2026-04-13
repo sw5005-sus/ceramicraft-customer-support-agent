@@ -47,9 +47,15 @@ def test_init_idempotent():
 
 def test_init_with_tracking_uri():
     """Should call mlflow setup when MLFLOW_TRACKING_URI is set."""
+    import sys
+
     import ceramicraft_customer_support_agent.mlflow_utils as mu
 
     mu._MLFLOW_INITIALIZED = False
+
+    mock_autolog = MagicMock()
+    mock_langchain_mod = MagicMock()
+    mock_langchain_mod.autolog = mock_autolog
 
     with (
         patch(
@@ -60,15 +66,13 @@ def test_init_with_tracking_uri():
             ),
         ),
         patch("ceramicraft_customer_support_agent.mlflow_utils.mlflow") as mock_mlflow,
+        patch.dict(sys.modules, {"mlflow.langchain": mock_langchain_mod}),
     ):
-        mock_mlflow.langchain = MagicMock()
-        mock_mlflow.langchain.autolog = MagicMock()
-
         mu.init_mlflow_tracing()
 
         mock_mlflow.set_tracking_uri.assert_called_once_with("http://localhost:5000")
         mock_mlflow.set_experiment.assert_called_once_with("test-experiment")
-        mock_mlflow.langchain.autolog.assert_called_once()
+        mock_autolog.assert_called_once_with(log_traces=True)
 
     mu._MLFLOW_INITIALIZED = False
 
