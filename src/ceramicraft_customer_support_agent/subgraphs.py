@@ -59,8 +59,8 @@ def _get_llm() -> ChatOpenAI:
     """Create a shared LLM instance from settings."""
     settings = get_settings()
     return ChatOpenAI(
-        model=settings.OPENAI_MODEL,  # ty: ignore[unknown-argument]
-        api_key=settings.OPENAI_API_KEY,  # ty: ignore[unknown-argument]
+        model=settings.CS_AGENT_OPENAI_MODEL,  # ty: ignore[unknown-argument]
+        api_key=settings.CS_AGENT_OPENAI_API_KEY,  # ty: ignore[unknown-argument]
     )
 
 

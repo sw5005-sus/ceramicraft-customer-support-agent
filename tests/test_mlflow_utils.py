@@ -14,7 +14,7 @@ def _mock_settings(tracking_uri: str = "", experiment: str = "ceramicraft-cs-age
     """Return a MagicMock Settings with MLflow fields populated."""
     cfg = MagicMock()
     cfg.MLFLOW_TRACKING_URI = tracking_uri
-    cfg.MLFLOW_EXPERIMENT_NAME = experiment
+    cfg.CS_AGENT_MLFLOW_EXPERIMENT_NAME = experiment
     return cfg
 
 

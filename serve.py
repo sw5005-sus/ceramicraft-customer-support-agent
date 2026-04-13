@@ -6,6 +6,7 @@ following the same dual-server pattern as notification-ms.
 
 import asyncio
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 from typing import Any
@@ -18,16 +19,31 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from ceramicraft_customer_support_agent.config import get_settings
-from ceramicraft_customer_support_agent.graph import build_checkpointer, build_graph
-from ceramicraft_customer_support_agent.grpc_service import (
+
+# Forward CS_AGENT_LANGSMITH_API_KEY to the env vars that LangChain reads
+# directly (LANGCHAIN_API_KEY / LANGCHAIN_TRACING_V2).  This must happen
+# before any LangChain import.
+_settings_early = get_settings()
+if _settings_early.CS_AGENT_LANGSMITH_API_KEY:
+    os.environ.setdefault(
+        "LANGCHAIN_API_KEY", _settings_early.CS_AGENT_LANGSMITH_API_KEY
+    )
+    os.environ.setdefault("LANGCHAIN_TRACING_V2", "true")
+    os.environ.setdefault(
+        "LANGCHAIN_PROJECT", _settings_early.CS_AGENT_LANGSMITH_PROJECT
+    )
+del _settings_early
+
+from ceramicraft_customer_support_agent.graph import build_checkpointer, build_graph  # noqa: E402
+from ceramicraft_customer_support_agent.grpc_service import (  # noqa: E402
     CustomerSupportAgentServicer,
 )
-from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token
-from ceramicraft_customer_support_agent.mlflow_utils import (
+from ceramicraft_customer_support_agent.mcp_client import get_tools, set_auth_token  # noqa: E402
+from ceramicraft_customer_support_agent.mlflow_utils import (  # noqa: E402
     init_mlflow_tracing,
     tag_trace,
 )
-from ceramicraft_customer_support_agent.pb import cs_agent_pb2_grpc
+from ceramicraft_customer_support_agent.pb import cs_agent_pb2_grpc  # noqa: E402
 
 # Apply dttb tracebacks for timestamps on exceptions
 dttb.apply()

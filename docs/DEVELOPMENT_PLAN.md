@@ -126,7 +126,7 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - 2 个轻量节点：chitchat（纯 LLM）、escalate（固定消息）
 - Guard 节点：auth 检查 + 敏感操作确认
 - PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）管理对话状态（进程级单例，跨请求持久）；POSTGRES_HOST 未配置则启动失败
-- `_trim_messages()` 限制传给子图的历史长度（`AGENT_MAX_HISTORY`，默认 20）
+- `_trim_messages()` 限制传给子图的历史长度（`CS_AGENT_MAX_HISTORY`，默认 20）
 - `_sanitize_messages()` 过滤 classifier 产生的 orphaned tool_calls
 
 ### 1.4 REST API（对外暴露）

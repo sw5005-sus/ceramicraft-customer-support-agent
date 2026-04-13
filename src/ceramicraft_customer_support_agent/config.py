@@ -12,11 +12,11 @@ class Settings(BaseSettings):
     )
 
     # MCP Server (downstream)
-    MCP_SERVER_URL: str = "http://mcp-server:8080/mcp"
+    CS_AGENT_MCP_SERVER_URL: str = "http://mcp-server:8080/mcp"
 
     # LLM (OpenAI)
-    OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4o"
+    CS_AGENT_OPENAI_API_KEY: str = ""
+    CS_AGENT_OPENAI_MODEL: str = "gpt-4o"
 
     # Agent Server — HTTP
     CS_AGENT_HTTP_HOST: str = "0.0.0.0"
@@ -26,15 +26,13 @@ class Settings(BaseSettings):
     CS_AGENT_GRPC_HOST: str = "[::]"
     CS_AGENT_GRPC_PORT: int = 50051
 
-    # LangSmith — LangChain reads LANGCHAIN_API_KEY / LANGCHAIN_TRACING_V2
-    # automatically from the environment; no application code reads these fields.
-    # Declared here only so they are accepted by pydantic-settings without error.
-    LANGSMITH_API_KEY: str = ""
-    LANGSMITH_PROJECT: str = "ceramicraft-cs-agent"
+    # LangSmith
+    CS_AGENT_LANGSMITH_API_KEY: str = ""
+    CS_AGENT_LANGSMITH_PROJECT: str = "ceramicraft-cs-agent"
 
     # MLflow (optional)
     MLFLOW_TRACKING_URI: str = ""
-    MLFLOW_EXPERIMENT_NAME: str = "ceramicraft-cs-agent"
+    CS_AGENT_MLFLOW_EXPERIMENT_NAME: str = "ceramicraft-cs-agent"
 
     # PostgreSQL — consistent with log-ms / notification-ms
     POSTGRES_USER: str = Field(default="")
@@ -44,7 +42,7 @@ class Settings(BaseSettings):
     CS_AGENT_DB_NAME: str = "cs_agent_db"
 
     # Max messages to pass to subgraphs (older messages are trimmed)
-    AGENT_MAX_HISTORY: int = 20
+    CS_AGENT_MAX_HISTORY: int = 20
 
     @property
     def DATABASE_URL(self) -> str:

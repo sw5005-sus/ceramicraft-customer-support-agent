@@ -80,7 +80,7 @@ class PersistentMCPClient:
 
         connection: StreamableHttpConnection = {
             "transport": "streamable_http",
-            "url": settings.MCP_SERVER_URL,
+            "url": settings.CS_AGENT_MCP_SERVER_URL,
         }
 
         # session=None forces connection mode:

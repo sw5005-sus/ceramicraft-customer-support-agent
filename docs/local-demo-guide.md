@@ -17,9 +17,9 @@ Key ports: user-ms `8083`, product-ms `8081`, order-ms `8082`, comment-ms `8084`
 Create `.env` in `ceramicraft-customer-support-agent/`:
 
 ```env
-MCP_SERVER_URL=http://mcp-server:8080/mcp
-OPENAI_API_KEY=sk-proj-xxxxx
-OPENAI_MODEL=gpt-4o
+CS_AGENT_MCP_SERVER_URL=http://mcp-server:8080/mcp
+CS_AGENT_OPENAI_API_KEY=sk-proj-xxxxx
+CS_AGENT_OPENAI_MODEL=gpt-4o
 POSTGRES_USER=ceramicraft
 POSTGRES_PASSWORD=ceramicraft123
 POSTGRES_HOST=postgres

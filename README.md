@@ -77,9 +77,9 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server:8080/mcp` |
-| `OPENAI_API_KEY` | OpenAI API key | *(required)* |
-| `OPENAI_MODEL` | Model name | `gpt-4o` |
+| `CS_AGENT_MCP_SERVER_URL` | MCP Server endpoint | `http://mcp-server:8080/mcp` |
+| `CS_AGENT_OPENAI_API_KEY` | OpenAI API key | *(required)* |
+| `CS_AGENT_OPENAI_MODEL` | Model name | `gpt-4o` |
 | `CS_AGENT_HTTP_HOST` | HTTP bind address | `0.0.0.0` |
 | `CS_AGENT_HTTP_PORT` | HTTP server port | `8080` |
 | `CS_AGENT_GRPC_HOST` | gRPC bind address | `[::]` |
@@ -89,9 +89,9 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 | `POSTGRES_HOST` | PostgreSQL host | *(required)* |
 | `POSTGRES_PORT` | PostgreSQL port | `5432` |
 | `CS_AGENT_DB_NAME` | Checkpoint database | `cs_agent_db` |
-| `AGENT_MAX_HISTORY` | Max messages to subgraphs | `20` |
+| `CS_AGENT_MAX_HISTORY` | Max messages to subgraphs | `20` |
 | `MLFLOW_TRACKING_URI` | MLflow server URL | *(optional)* |
-| `MLFLOW_EXPERIMENT_NAME` | MLflow experiment | `ceramicraft-cs-agent` |
+| `CS_AGENT_MLFLOW_EXPERIMENT_NAME` | MLflow experiment | `ceramicraft-cs-agent` |
 
 ## Documentation
 

@@ -25,7 +25,7 @@ def init_mlflow_tracing() -> None:
         return
 
     mlflow.set_tracking_uri(settings.MLFLOW_TRACKING_URI)
-    mlflow.set_experiment(settings.MLFLOW_EXPERIMENT_NAME)
+    mlflow.set_experiment(settings.CS_AGENT_MLFLOW_EXPERIMENT_NAME)
 
     if hasattr(mlflow, "langchain") and hasattr(mlflow.langchain, "autolog"):
         try:
@@ -36,7 +36,7 @@ def init_mlflow_tracing() -> None:
     logger.info(
         "MLflow tracing initialized. tracking_uri=%s experiment=%s",
         settings.MLFLOW_TRACKING_URI,
-        settings.MLFLOW_EXPERIMENT_NAME,
+        settings.CS_AGENT_MLFLOW_EXPERIMENT_NAME,
     )
     _MLFLOW_INITIALIZED = True
 

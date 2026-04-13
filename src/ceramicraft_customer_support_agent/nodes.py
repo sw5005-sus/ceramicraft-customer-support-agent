@@ -24,8 +24,8 @@ def build_chitchat_node() -> Callable:
     """
     settings = get_settings()
     llm = ChatOpenAI(
-        model=settings.OPENAI_MODEL,  # ty: ignore[unknown-argument]
-        api_key=settings.OPENAI_API_KEY,  # ty: ignore[unknown-argument]
+        model=settings.CS_AGENT_OPENAI_MODEL,  # ty: ignore[unknown-argument]
+        api_key=settings.CS_AGENT_OPENAI_API_KEY,  # ty: ignore[unknown-argument]
     )
 
     async def chitchat_node(state: dict) -> dict:
