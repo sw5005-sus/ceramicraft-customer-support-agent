@@ -48,7 +48,7 @@ jobs:
 
       - name: Update values.yaml tag
         run: |
-          cd argocd-deploy/helm_backend/cs-agent-ms
+          cd argocd-deploy/helm_backend/customer-support-agent-ms
           TAG="${{ github.event.inputs.version }}"
           sed -i.bak "5s|^.*$|  tag: ${TAG}|" values.yaml
           rm -f values.yaml.bak
@@ -63,6 +63,6 @@ jobs:
           cd argocd-deploy
           git config user.name "${GIT_AUTHOR_NAME}"
           git config user.email "${GIT_AUTHOR_EMAIL}"
-          git add helm_backend/cs-agent-ms/values.yaml
-          git commit -m "chore(cs-agent): bump tag to ${{ github.event.inputs.version }} [skip ci]" || echo "No changes to commit"
+          git add helm_backend/customer-support-agent-ms/values.yaml
+          git commit -m "chore(customer-support-agent): bump tag to ${{ github.event.inputs.version }} [skip ci]" || echo "No changes to commit"
           git push origin HEAD:main
