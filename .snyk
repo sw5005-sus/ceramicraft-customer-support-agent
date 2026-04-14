@@ -1,10 +1,81 @@
 # Snyk (https://snyk.io) policy file
 version: v1.25.0
 ignore:
-  SNYK-PYTHON-MLFLOWSKINNY-15922302:
+  SNYK-PYTHON-MLFLOW-15325638:
     - '*':
         reason: >-
-          Upstream mlflow-skinny vulnerability with no fix available.
-          We only use MlflowClient (read-only tracing); MLflow server
-          is not exposed. Aligned with secure-agent team approach.
-        expires: 2026-07-13T00:00:00.000Z
+          Use of Default Credentials in mlflow server component.
+          We only use MLflow as a tracking client (log traces);
+          the MLflow server is deployed separately and not exposed
+          by this service. No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-15922301:
+    - '*':
+        reason: >-
+          Missing Authentication for Critical Function in mlflow server.
+          We only use MLflow as a tracking client; server auth is managed
+          at infra level. No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210300:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210309:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210311:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210331:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210332:
+    - '*':
+        reason: >-
+          Code Injection in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210333:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210334:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210335:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOW-7210336:
+    - '*':
+        reason: >-
+          Deserialization of Untrusted Data in mlflow model loading.
+          We do not load untrusted models; we only log traces.
+          No fix available.
+        expires: 2026-07-14T00:00:00.000Z
