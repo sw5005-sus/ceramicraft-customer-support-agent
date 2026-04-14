@@ -91,9 +91,9 @@ uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-mis
 | `CS_AGENT_DB_NAME` | Checkpoint database | `cs_agent_db` |
 | `CS_AGENT_MAX_HISTORY` | Max messages to subgraphs | `20` |
 | `CS_AGENT_LANGSMITH_API_KEY` | LangSmith API key (forwarded to `LANGCHAIN_API_KEY`) | *(optional)* |
-| `CS_AGENT_LANGSMITH_PROJECT` | LangSmith project name | `ceramicraft-cs-agent` |
+| `CS_AGENT_LANGSMITH_PROJECT` | LangSmith project name | `customer-support-agent` |
 | `MLFLOW_TRACKING_URI` | MLflow server URL | *(optional)* |
-| `CS_AGENT_MLFLOW_EXPERIMENT_NAME` | MLflow experiment | `ceramicraft-cs-agent` |
+| `CS_AGENT_MLFLOW_EXPERIMENT_NAME` | MLflow experiment | `customer-support-agent` |
 
 ## Documentation
 
