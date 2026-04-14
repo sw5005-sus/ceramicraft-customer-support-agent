@@ -141,9 +141,7 @@ async def chat(body: ChatRequest, request: Request):
         }
 
         with mlflow.start_span(name="cs_agent_chat") as span:
-            span.set_inputs(
-                {"message": body.message, "thread_id": thread_id}
-            )
+            span.set_inputs({"message": body.message, "thread_id": thread_id})
             response = await agent.ainvoke(
                 initial_state,
                 config={"configurable": {"thread_id": thread_id}},

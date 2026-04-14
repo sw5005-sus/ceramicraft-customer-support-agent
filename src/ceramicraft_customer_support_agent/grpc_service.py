@@ -43,9 +43,7 @@ class CustomerSupportAgentServicer(
             }
 
             with mlflow.start_span(name="cs_agent_chat_grpc") as span:
-                span.set_inputs(
-                    {"message": request.message, "thread_id": thread_id}
-                )
+                span.set_inputs({"message": request.message, "thread_id": thread_id})
                 response = await self._agent.ainvoke(
                     initial_state,
                     config={"configurable": {"thread_id": thread_id}},

@@ -343,9 +343,7 @@ def _make_human_msg(content="hello"):
 
 def test_sanitize_removes_orphaned_ai_tool_calls():
     """AIMessage with tool_calls but no matching ToolMessage should be removed."""
-    ai = _make_ai_msg(
-        content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}]
-    )
+    ai = _make_ai_msg(content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}])
     human = _make_human_msg()
     result = _sanitize_messages([human, ai])
     assert len(result) == 1
@@ -354,9 +352,7 @@ def test_sanitize_removes_orphaned_ai_tool_calls():
 
 def test_sanitize_keeps_matched_ai_and_tool():
     """AIMessage with tool_calls + matching ToolMessage should both survive."""
-    ai = _make_ai_msg(
-        content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}]
-    )
+    ai = _make_ai_msg(content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}])
     tool = _make_tool_msg("tc1")
     human = _make_human_msg()
     result = _sanitize_messages([human, ai, tool])
@@ -366,9 +362,7 @@ def test_sanitize_keeps_matched_ai_and_tool():
 def test_sanitize_removes_orphaned_tool_messages():
     """ToolMessage without a surviving AIMessage parent should be removed."""
     # AI with tc1 (no matching ToolMessage) + orphan ToolMessage for tc2
-    ai = _make_ai_msg(
-        content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}]
-    )
+    ai = _make_ai_msg(content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}])
     orphan_tool = _make_tool_msg("tc2")
     human = _make_human_msg()
     result = _sanitize_messages([human, ai, orphan_tool])
