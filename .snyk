@@ -79,3 +79,10 @@ ignore:
           We do not load untrusted models; we only log traces.
           No fix available.
         expires: 2026-07-14T00:00:00.000Z
+  SNYK-PYTHON-MLFLOWSKINNY-15922302:
+    - '*':
+        reason: >-
+          Missing Authentication in mlflow-skinny (transitive dep of mlflow).
+          We only use MLflow as a tracking client; server auth is managed
+          at infra level. No fix available.
+        expires: 2026-07-14T00:00:00.000Z
