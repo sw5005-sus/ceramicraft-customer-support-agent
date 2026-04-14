@@ -4,6 +4,7 @@ import logging
 import uuid
 
 import grpc
+import mlflow
 
 from .mcp_client import set_auth_token
 from .mlflow_utils import tag_trace
@@ -41,14 +42,26 @@ class CustomerSupportAgentServicer(
                 "auth_token": token,
             }
 
-            response = await self._agent.ainvoke(
-                initial_state,
-                config={"configurable": {"thread_id": thread_id}},
-            )
+            with mlflow.start_span(name="cs_agent_chat_grpc") as span:
+                span.set_inputs(
+                    {"message": request.message, "thread_id": thread_id}
+                )
+                response = await self._agent.ainvoke(
+                    initial_state,
+                    config={"configurable": {"thread_id": thread_id}},
+                )
+                intent = response.get("intent", "unknown")
+                span.set_attributes(
+                    {
+                        "intent": intent,
+                        "authenticated": bool(token),
+                        "thread_id": thread_id,
+                    }
+                )
 
             tag_trace(
                 {
-                    "intent": response.get("intent", "unknown"),
+                    "intent": intent,
                     "authenticated": "true" if token else "false",
                     "thread_id": thread_id,
                 }

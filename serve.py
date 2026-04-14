@@ -13,6 +13,7 @@ from typing import Any
 
 import dttb
 import grpc
+import mlflow
 import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -139,14 +140,26 @@ async def chat(body: ChatRequest, request: Request):
             "auth_token": token,
         }
 
-        response = await agent.ainvoke(
-            initial_state,
-            config={"configurable": {"thread_id": thread_id}},
-        )
+        with mlflow.start_span(name="cs_agent_chat") as span:
+            span.set_inputs(
+                {"message": body.message, "thread_id": thread_id}
+            )
+            response = await agent.ainvoke(
+                initial_state,
+                config={"configurable": {"thread_id": thread_id}},
+            )
+            intent = response.get("intent", "unknown")
+            span.set_attributes(
+                {
+                    "intent": intent,
+                    "authenticated": bool(token),
+                    "thread_id": thread_id,
+                }
+            )
 
         tag_trace(
             {
-                "intent": response.get("intent", "unknown"),
+                "intent": intent,
                 "authenticated": "true" if token else "false",
                 "thread_id": thread_id,
             }
