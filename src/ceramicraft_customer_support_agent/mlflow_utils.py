@@ -52,12 +52,15 @@ def init_mlflow_tracing() -> None:
 def tag_trace(tags: dict) -> None:
     """Add custom tags to the current MLflow trace.
 
-    Silently no-ops if no active trace exists (e.g. tracing disabled).
+    Silently no-ops if no active trace exists (e.g. tracing disabled or
+    autolog not available).
 
     Args:
         tags: Key-value pairs to set on the current trace.
     """
     try:
+        if mlflow.get_current_active_span() is None:
+            return
         mlflow.update_current_trace(tags=tags)
     except Exception:
         pass  # tracing must never break the business flow

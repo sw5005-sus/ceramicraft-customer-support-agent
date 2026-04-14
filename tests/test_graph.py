@@ -6,6 +6,7 @@ import pytest
 
 from ceramicraft_customer_support_agent.graph import (
     AgentState,
+    _sanitize_messages,
     _trim_messages,
     build_checkpointer,
     build_graph,
@@ -311,3 +312,95 @@ def test_settings_database_url_empty_when_no_host():
 
     s = Settings(_env_file=None)  # ty: ignore[unknown-argument]
     assert s.DATABASE_URL == ""
+
+
+# --- _sanitize_messages tests ---
+
+
+def _make_ai_msg(content="hi", tool_calls=None):
+    """Helper to build AIMessage."""
+    from langchain_core.messages import AIMessage
+
+    kwargs = {"content": content}
+    if tool_calls:
+        kwargs["tool_calls"] = tool_calls
+    return AIMessage(**kwargs)
+
+
+def _make_tool_msg(tool_call_id, content="result"):
+    """Helper to build ToolMessage."""
+    from langchain_core.messages import ToolMessage
+
+    return ToolMessage(content=content, tool_call_id=tool_call_id)
+
+
+def _make_human_msg(content="hello"):
+    """Helper to build HumanMessage."""
+    from langchain_core.messages import HumanMessage
+
+    return HumanMessage(content=content)
+
+
+def test_sanitize_removes_orphaned_ai_tool_calls():
+    """AIMessage with tool_calls but no matching ToolMessage should be removed."""
+    ai = _make_ai_msg(
+        content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}]
+    )
+    human = _make_human_msg()
+    result = _sanitize_messages([human, ai])
+    assert len(result) == 1
+    assert result[0] is human
+
+
+def test_sanitize_keeps_matched_ai_and_tool():
+    """AIMessage with tool_calls + matching ToolMessage should both survive."""
+    ai = _make_ai_msg(
+        content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}]
+    )
+    tool = _make_tool_msg("tc1")
+    human = _make_human_msg()
+    result = _sanitize_messages([human, ai, tool])
+    assert len(result) == 3
+
+
+def test_sanitize_removes_orphaned_tool_messages():
+    """ToolMessage without a surviving AIMessage parent should be removed."""
+    # AI with tc1 (no matching ToolMessage) + orphan ToolMessage for tc2
+    ai = _make_ai_msg(
+        content="", tool_calls=[{"id": "tc1", "name": "foo", "args": {}}]
+    )
+    orphan_tool = _make_tool_msg("tc2")
+    human = _make_human_msg()
+    result = _sanitize_messages([human, ai, orphan_tool])
+    # ai removed (tc1 unanswered), orphan_tool removed (tc2 no parent)
+    assert len(result) == 1
+    assert result[0] is human
+
+
+def test_sanitize_removes_tool_msg_when_parent_ai_stripped():
+    """ToolMessage should be removed when its parent AIMessage is stripped."""
+    # AI has two tool_calls, only one answered → AI stripped → both tools gone
+    ai = _make_ai_msg(
+        content="",
+        tool_calls=[
+            {"id": "tc1", "name": "foo", "args": {}},
+            {"id": "tc2", "name": "bar", "args": {}},
+        ],
+    )
+    tool1 = _make_tool_msg("tc1")
+    # tc2 has no ToolMessage → AI stripped → tool1 becomes orphan
+    result = _sanitize_messages([ai, tool1])
+    assert len(result) == 0
+
+
+def test_sanitize_preserves_plain_messages():
+    """HumanMessage and plain AIMessage (no tool_calls) should pass through."""
+    human = _make_human_msg()
+    ai = _make_ai_msg(content="sure!")
+    result = _sanitize_messages([human, ai])
+    assert len(result) == 2
+
+
+def test_sanitize_empty_list():
+    """Empty message list should return empty."""
+    assert _sanitize_messages([]) == []

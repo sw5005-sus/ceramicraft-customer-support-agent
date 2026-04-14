@@ -77,9 +77,11 @@ def test_init_with_tracking_uri():
     mu._MLFLOW_INITIALIZED = False
 
 
-def test_tag_trace_calls_update():
-    """tag_trace should call mlflow.update_current_trace with the given tags."""
+def test_tag_trace_calls_update_when_active_span():
+    """tag_trace should call update_current_trace when an active span exists."""
     with patch("ceramicraft_customer_support_agent.mlflow_utils.mlflow") as mock_mlflow:
+        mock_mlflow.get_current_active_span.return_value = MagicMock()
+
         from ceramicraft_customer_support_agent.mlflow_utils import tag_trace
 
         tag_trace({"intent": "browse", "authenticated": "true"})
@@ -88,10 +90,21 @@ def test_tag_trace_calls_update():
         )
 
 
+def test_tag_trace_skips_when_no_active_span():
+    """tag_trace should no-op when there is no active span."""
+    with patch("ceramicraft_customer_support_agent.mlflow_utils.mlflow") as mock_mlflow:
+        mock_mlflow.get_current_active_span.return_value = None
+
+        from ceramicraft_customer_support_agent.mlflow_utils import tag_trace
+
+        tag_trace({"intent": "browse"})
+        mock_mlflow.update_current_trace.assert_not_called()
+
+
 def test_tag_trace_silences_errors():
     """tag_trace should not propagate exceptions from mlflow."""
     with patch("ceramicraft_customer_support_agent.mlflow_utils.mlflow") as mock_mlflow:
-        mock_mlflow.update_current_trace.side_effect = RuntimeError("boom")
+        mock_mlflow.get_current_active_span.side_effect = RuntimeError("boom")
 
         from ceramicraft_customer_support_agent.mlflow_utils import tag_trace
 

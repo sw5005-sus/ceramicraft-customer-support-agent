@@ -155,29 +155,50 @@ def route_by_intent(state: AgentState) -> str:
 
 
 def _sanitize_messages(messages: list) -> list:
-    """Remove orphaned tool_calls that lack a corresponding ToolMessage.
+    """Remove orphaned tool_calls and orphaned ToolMessages.
 
     The classifier uses ``with_structured_output`` which internally relies on
     function-calling.  This leaves AIMessages with ``tool_calls`` in the
     history but *no* matching ToolMessage, which LangGraph's
     ``_validate_chat_history`` rightfully rejects.
 
-    This helper strips those orphaned AIMessages so downstream subgraphs
+    Conversely, ToolMessages whose parent AIMessage (with matching
+    ``tool_calls``) was removed also cause OpenAI to reject the request
+    with "messages with role 'tool' must be a response to a preceding
+    message with 'tool_calls'".
+
+    This helper strips both directions of orphans so downstream subgraphs
     receive a clean history.
     """
+    # Pass 1: collect tool_call IDs that have a corresponding ToolMessage.
     answered_ids: set[str] = set()
     for msg in messages:
         if isinstance(msg, ToolMessage):
             answered_ids.add(msg.tool_call_id)
 
+    # Pass 2: keep AIMessages with tool_calls only if every call is answered;
+    #         track which tool_call IDs survive so we can prune orphan
+    #         ToolMessages in the next pass.
     clean: list = []
+    active_tool_call_ids: set[str] = set()
     for msg in messages:
         if isinstance(msg, AIMessage) and getattr(msg, "tool_calls", None):
             if all(tc["id"] in answered_ids for tc in msg.tool_calls):
                 clean.append(msg)
+                for tc in msg.tool_calls:
+                    active_tool_call_ids.add(tc["id"])
         else:
             clean.append(msg)
-    return clean
+
+    # Pass 3: drop ToolMessages whose parent AIMessage was stripped.
+    final: list = []
+    for msg in clean:
+        if isinstance(msg, ToolMessage):
+            if msg.tool_call_id in active_tool_call_ids:
+                final.append(msg)
+        else:
+            final.append(msg)
+    return final
 
 
 def _trim_messages(messages: list, max_history: int) -> list:
