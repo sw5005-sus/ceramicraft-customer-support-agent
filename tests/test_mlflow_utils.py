@@ -10,7 +10,7 @@ def _reset_init_flag():
     mu._MLFLOW_INITIALIZED = False
 
 
-def _mock_settings(tracking_uri: str = "", experiment: str = "ceramicraft-cs-agent"):
+def _mock_settings(tracking_uri: str = "", experiment: str = "customer-support-agent"):
     """Return a MagicMock Settings with MLflow fields populated."""
     cfg = MagicMock()
     cfg.MLFLOW_TRACKING_URI = tracking_uri
@@ -47,15 +47,16 @@ def test_init_idempotent():
 
 def test_init_with_tracking_uri():
     """Should call mlflow setup when MLFLOW_TRACKING_URI is set."""
-    import sys
-
     import ceramicraft_customer_support_agent.mlflow_utils as mu
 
     mu._MLFLOW_INITIALIZED = False
 
     mock_autolog = MagicMock()
-    mock_langchain_mod = MagicMock()
-    mock_langchain_mod.autolog = mock_autolog
+    mock_langchain = MagicMock()
+    mock_langchain.autolog = mock_autolog
+
+    mock_mlflow = MagicMock()
+    mock_mlflow.langchain = mock_langchain
 
     with (
         patch(
@@ -65,8 +66,7 @@ def test_init_with_tracking_uri():
                 experiment="test-experiment",
             ),
         ),
-        patch("ceramicraft_customer_support_agent.mlflow_utils.mlflow") as mock_mlflow,
-        patch.dict(sys.modules, {"mlflow.langchain": mock_langchain_mod}),
+        patch("ceramicraft_customer_support_agent.mlflow_utils.mlflow", mock_mlflow),
     ):
         mu.init_mlflow_tracing()
 

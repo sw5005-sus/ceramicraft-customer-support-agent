@@ -28,11 +28,11 @@ class Settings(BaseSettings):
 
     # LangSmith
     CS_AGENT_LANGSMITH_API_KEY: str = ""
-    CS_AGENT_LANGSMITH_PROJECT: str = "ceramicraft-cs-agent"
+    CS_AGENT_LANGSMITH_PROJECT: str = "customer-support-agent"
 
     # MLflow (optional)
     MLFLOW_TRACKING_URI: str = ""
-    CS_AGENT_MLFLOW_EXPERIMENT_NAME: str = "ceramicraft-cs-agent"
+    CS_AGENT_MLFLOW_EXPERIMENT_NAME: str = "customer-support-agent"
 
     # PostgreSQL — consistent with log-ms / notification-ms
     POSTGRES_USER: str = Field(default="")

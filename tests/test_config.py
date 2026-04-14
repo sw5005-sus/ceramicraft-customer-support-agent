@@ -12,7 +12,7 @@ def test_settings_defaults():
     assert settings.CS_AGENT_HTTP_PORT == 8080
     assert settings.CS_AGENT_GRPC_HOST == "[::]"
     assert settings.CS_AGENT_GRPC_PORT == 50051
-    assert settings.CS_AGENT_LANGSMITH_PROJECT == "ceramicraft-cs-agent"
+    assert settings.CS_AGENT_LANGSMITH_PROJECT == "customer-support-agent"
 
 
 def test_get_settings_returns_settings_instance():
