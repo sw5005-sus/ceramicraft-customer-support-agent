@@ -210,7 +210,7 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 - MLflow tracing via `mlflow.langchain.autolog()` — auto-captures full LangGraph execution traces
 - Prompt Registry integration — prompts loadable from MLflow with local fallback
 - Custom span tags via `tag_trace()` — records `intent`, `authenticated`, `thread_id` per request
-- Evaluation script `scripts/run_evaluation.py` — 12-case test dataset, logs metrics to `ceramicraft-cs-agent-eval` experiment
+- Evaluation script `scripts/run_evaluation.py` — 12-case test dataset, logs metrics to `customer-support-agent-eval` experiment
 - Graceful degradation — app works without MLflow installed/configured
 
 ---
@@ -250,7 +250,7 @@ ceramicraft-customer-support-agent/
 │   ├── test_grpc_service.py          # gRPC servicer 测试（Chat + Reset）
 │   └── test_subgraphs.py
 ├── scripts/
-│   └── run_evaluation.py             # MLflow evaluation script (12-case test dataset, logs to ceramicraft-cs-agent-eval)
+│   └── run_evaluation.py             # MLflow evaluation script (12-case test dataset, logs to customer-support-agent-eval)
 ├── Dockerfile
 ├── docker-compose.yml
 └── pyproject.toml
