@@ -1,6 +1,7 @@
 """MLflow tracing utilities for the Customer Support Agent."""
 
 import logging
+import warnings
 
 import mlflow
 
@@ -9,6 +10,15 @@ from ceramicraft_customer_support_agent.config import get_settings
 logger = logging.getLogger(__name__)
 
 _MLFLOW_INITIALIZED = False
+
+
+# Suppress known MLflow async ContextVar warning (upstream bug in MLflow 3.x + LangGraph async)
+class _ContextVarFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "was created in a different Context" not in record.getMessage()
+
+
+logging.getLogger("mlflow.utils.autologging_utils").addFilter(_ContextVarFilter())
 
 
 def init_mlflow_tracing() -> None:
