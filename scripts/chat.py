@@ -31,19 +31,24 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    # Require token
-    token = input("Token (required): ").strip()
+    # Token: prompt → env var fallback
+    token = input("Token (Enter to use $TOKEN env var): ").strip()
     if not token:
-        print("ERROR: Token is required.")
-        sys.exit(1)
+        import os
+
+        token = os.environ.get("TOKEN", "")
+        if token:
+            print(f"Using token from $TOKEN env var ({token[:8]}...)")
+        else:
+            print("WARNING: No token provided. Requests will be unauthenticated.")
+            token = ""
 
     # Optional thread_id
     thread_id = input("Thread ID (press Enter to create new): ").strip() or None
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}",
-    }
+    headers: dict = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
     print()
     print("=" * 50)
