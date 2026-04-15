@@ -22,6 +22,7 @@ dependencies = [
     "fastapi>=0.115.0",
     "uvicorn>=0.34.0",
     "mlflow>=3.11.1,<4",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.20.0",
     "langgraph-checkpoint-postgres>=2.0.0",
     "psycopg[binary]>=3.1.0",
     "grpcio>=1.80.0",
