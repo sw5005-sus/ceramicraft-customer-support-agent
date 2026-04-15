@@ -72,7 +72,7 @@ def test_init_with_tracking_uri():
 
         mock_mlflow.set_tracking_uri.assert_called_once_with("http://localhost:5000")
         mock_mlflow.set_experiment.assert_called_once_with("test-experiment")
-        mock_autolog.assert_called_once_with(log_traces=True)
+        mock_autolog.assert_called_once_with(log_traces=True, run_tracer_inline=True)
 
     mu._MLFLOW_INITIALIZED = False
 
