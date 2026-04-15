@@ -30,7 +30,7 @@ def init_mlflow_tracing() -> None:
     try:
         if hasattr(mlflow, "langchain") and hasattr(mlflow.langchain, "autolog"):
             try:
-                mlflow.langchain.autolog(log_traces=True)
+                mlflow.langchain.autolog(log_traces=True, run_tracer_inline=True)
             except TypeError:
                 mlflow.langchain.autolog()
             logger.info("mlflow.langchain.autolog enabled.")
