@@ -1,6 +1,6 @@
 # Customer Support Agent — 开发计划
 
-_最后更新：2026-03-31_
+_最后更新：2026-04-18_
 
 ---
 
@@ -12,11 +12,11 @@ _最后更新：2026-03-31_
 | 对话状态 | PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）；POSTGRES_HOST 必填，未配置则启动报错 |
 | 鉴权 | Agent 不验证 token，纯透传给下游 MCP Server（由 MCP Server 统一验证） |
 | 敏感操作 | 下单前展示购物车并要求确认，确认收货和删地址也需确认；加购物车不需确认 |
-| Agent 架构 | LangGraph StateGraph：意图分类 → 条件路由 → 领域子图（ReAct）→ 安全守卫 |
+| Agent 架构 | LangGraph StateGraph：输入安全检测 → 意图分类 → 条件路由 → 领域子图（ReAct）→ 安全守卫 |
 | LLM | OpenAI GPT-4o |
 | 设计原则 | Prompt Engineering + Context Engineering + 渐进式披露 |
 | MCP Client | PersistentMCPClient 单例（connection 模式），工具列表缓存，每次调用建临时 session |
-| 可观测性 | MLflow tracing（autolog）+ Prompt Registry；tracing 失败不影响业务；prompt fallback 到硬编码默认值 |
+| 可观测性 | MLflow tracing（autolog）+ Prompt Registry + Session grouping（`mlflow.trace.session_id`）；tracing 失败不影响业务；prompt fallback 到硬编码默认值 |
 
 ---
 
@@ -29,6 +29,11 @@ _最后更新：2026-03-31_
   │ __start__ │
   └─────┬────┘
         ▼
+  ┌─────────────┐
+  │ Input Guard │ ← 预检：prompt injection / jailbreak 检测（regex，pre-LLM）
+  └─────┬───────┘
+        │ blocked → Guard（拒绝消息）
+        │ safe ↓
   ┌────────────┐
   │ Classifier │ ← 意图分类（Pydantic structured output，无工具）
   └─────┬──────┘
@@ -209,9 +214,17 @@ FastAPI 虽然也用 anyio，但不像 FastMCP 那样将 handler 包在严格的
 ### 3.6 MLflow Integration ✅
 - MLflow tracing via `mlflow.langchain.autolog()` — auto-captures full LangGraph execution traces
 - Prompt Registry integration — prompts loadable from MLflow with local fallback
+- Session grouping — `mlflow.trace.session_id` mapped from `thread_id` for conversation-level trace grouping
 - Custom span tags via `tag_trace()` — records `intent`, `authenticated`, `thread_id` per request
 - Evaluation script `scripts/run_evaluation.py` — 12-case test dataset, logs metrics to `customer-support-agent-eval` experiment
 - Graceful degradation — app works without MLflow installed/configured
+
+### 3.7 Input Security ✅
+- Pre-LLM input guard: regex-based prompt injection / jailbreak detection (7 pattern categories)
+- `build_input_guard()` node screens latest human message before reaching classifier or any LLM
+- `AgentState.blocked` flag routes detected attacks directly to guard node with polite refusal
+- 66 security unit tests (23 positive + 6 specific pattern + 19 false-positive + 9 integration + logging)
+- DeepEval LLM evaluation: prompt injection resistance + information leakage + security compliance (manual CI workflow)
 
 ---
 
@@ -226,12 +239,12 @@ ceramicraft-customer-support-agent/
 │   ├── agent.py                      # 向后兼容接口（调 build_graph）
 │   ├── classifier.py                 # 意图分类节点（Intent enum + Pydantic structured output）
 │   ├── graph.py                      # StateGraph 主图（AgentState + build_graph + _wrap_subgraph + auth 注入 + 异常捕获）
-│   ├── guard.py                      # 安全守卫节点（auth 兜底检查 + 敏感操作确认）
+│   ├── guard.py                      # 安全守卫（input_guard: prompt injection 检测 + build_guard: auth 兜底 + 敏感操作确认）
 │   ├── nodes.py                      # 轻量节点（chitchat + escalate，无工具）
 │   ├── subgraphs.py                  # 领域子图（5 个 stateless ReAct agent builder）
 │   ├── grpc_service.py                   # gRPC servicer (async Chat + Reset, mirrors REST endpoints)
 │   ├── mcp_client.py                 # MCP Client（PersistentMCPClient 单例，connection 模式 + auth interceptor）
-│   ├── mlflow_utils.py               # MLflow tracing init + tag_trace() helper (tracing failures non-fatal)
+│   ├── mlflow_utils.py               # MLflow tracing init + tag_trace() + session grouping (tracing failures non-fatal)
 │   ├── prompts.py                    # System prompt 模板（主 + 6 个领域）
 │   └── pb/                           # Generated protobuf (cs_agent_pb2*.py)
 ├── protos/
@@ -243,12 +256,18 @@ ceramicraft-customer-support-agent/
 │   ├── test_config.py
 │   ├── test_graph.py
 │   ├── test_guard.py
+│   ├── test_guard_security.py         # Prompt injection / jailbreak 安全测试（66 cases）
 │   ├── test_mcp_client.py            # PersistentMCPClient + AuthInterceptor 测试
 │   ├── test_nodes.py
 │   ├── test_prompts.py
 │   ├── test_serve.py                 # FastAPI 端点测试（新增）
 │   ├── test_grpc_service.py          # gRPC servicer 测试（Chat + Reset）
 │   └── test_subgraphs.py
+│   └── deepeval/                      # DeepEval LLM 评估测试（需 OPENAI_API_KEY，手动触发）
+│       ├── conftest.py
+│       ├── test_classifier.py         # Intent 分类质量评估（GEval）
+│       ├── test_reply_quality.py      # 回复质量 + 安全合规评估
+│       └── test_security.py           # Prompt injection resistance + information leakage 评估
 ├── scripts/
 │   └── run_evaluation.py             # MLflow evaluation script (12-case test dataset, logs to customer-support-agent-eval)
 ├── Dockerfile
