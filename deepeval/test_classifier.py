@@ -36,7 +36,7 @@ CLASSIFIER_CASES: list[dict[str, str]] = [
     {
         "input": "I want to see reviews for the blue vase",
         "expected_intent": "browse",
-        "scenario": "Product review browsing",
+        "scenario": "Product detail browsing (includes viewing reviews on product page)",
     },
     # cart
     {
