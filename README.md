@@ -104,4 +104,4 @@ OPENAI_API_KEY=... PYTHONPATH=src uv run deepeval test run deepeval/ -v
 ## Documentation
 
 - [Local Demo Guide](docs/local-demo-guide.md) — Step-by-step local-stack setup and demo walkthrough
-- [Development Plan](docs/DEVELOPMENT_PLAN.md) — Roadmap and design decisions
+- [Development Plan](docs/development-plan.md) — Roadmap and design decisions
