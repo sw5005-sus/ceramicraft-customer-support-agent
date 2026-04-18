@@ -1,14 +1,6 @@
-name: DeepEval LLM Evaluation
+name: DeepEval
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'src/**'
-      - 'deepeval/**'
-      - 'pyproject.toml'
-      - '.github/workflows/deepeval.yml'
   workflow_dispatch:
 
 env:
@@ -17,7 +9,7 @@ env:
 
 jobs:
   deepeval:
-    name: Run DeepEval Tests
+    name: Run DeepEval tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -31,8 +23,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: |
-          uv sync --dev
+        run: uv sync --dev
 
       - name: Verify OpenAI API key is set
         run: |
@@ -42,13 +33,10 @@ jobs:
           fi
 
       - name: Run DeepEval classifier tests
-        run: |
-          PYTHONPATH=src uv run deepeval test run deepeval/test_classifier.py -v
+        run: PYTHONPATH=src uv run deepeval test run deepeval/test_classifier.py -v
 
       - name: Run DeepEval reply quality tests
-        run: |
-          PYTHONPATH=src uv run deepeval test run deepeval/test_reply_quality.py -v
+        run: PYTHONPATH=src uv run deepeval test run deepeval/test_reply_quality.py -v
 
       - name: Run DeepEval security tests
-        run: |
-          PYTHONPATH=src uv run deepeval test run deepeval/test_security.py -v
+        run: PYTHONPATH=src uv run deepeval test run deepeval/test_security.py -v
