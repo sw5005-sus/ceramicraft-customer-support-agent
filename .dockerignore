@@ -4,6 +4,7 @@
 .env
 .coverage
 .pytest_cache/
+.deepeval/
 .ruff_cache/
 __pycache__/
 *.pyc
