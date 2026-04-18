@@ -50,6 +50,10 @@ def init_mlflow_tracing() -> None:
 def tag_trace(tags: dict) -> None:
     """Add custom tags to the current MLflow trace.
 
+    Automatically sets ``mlflow.trace.session_id`` from the ``thread_id``
+    tag (if present) so that all traces for the same conversation are
+    grouped under one session in the MLflow UI.
+
     Silently no-ops if no active trace exists (e.g. tracing disabled or
     autolog not available).
 
@@ -59,6 +63,9 @@ def tag_trace(tags: dict) -> None:
     try:
         if mlflow.get_current_active_span() is None:
             return
+        # Map thread_id → MLflow session for conversation-level grouping.
+        if "thread_id" in tags and "mlflow.trace.session_id" not in tags:
+            tags["mlflow.trace.session_id"] = tags["thread_id"]
         mlflow.update_current_trace(tags=tags)
     except Exception:
         pass  # tracing must never break the business flow
