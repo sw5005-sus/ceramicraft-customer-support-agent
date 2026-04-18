@@ -28,3 +28,4 @@ scripts/
 !scripts/get_token.py
 .env.bak
 .env.local
+.deepeval/
