@@ -28,13 +28,13 @@ jobs:
           fi
 
       - name: Run classifier evaluation
-        run: PYTHONPATH=src uv run deepeval test run deepeval/test_classifier.py -v
+        run: uv run deepeval test run tests/deepeval/test_classifier.py -v
         continue-on-error: true
 
       - name: Run reply quality evaluation
-        run: PYTHONPATH=src uv run deepeval test run deepeval/test_reply_quality.py -v
+        run: uv run deepeval test run tests/deepeval/test_reply_quality.py -v
         continue-on-error: true
 
       - name: Run security evaluation
-        run: PYTHONPATH=src uv run deepeval test run deepeval/test_security.py -v
+        run: uv run deepeval test run tests/deepeval/test_security.py -v
         continue-on-error: true

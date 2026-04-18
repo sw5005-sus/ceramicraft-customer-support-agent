@@ -76,7 +76,7 @@ uv run ty check            # Type check
 uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-missing  # Test
 
 # DeepEval LLM evaluation (requires OPENAI_API_KEY)
-OPENAI_API_KEY=... PYTHONPATH=src uv run deepeval test run deepeval/ -v
+OPENAI_API_KEY=... uv run deepeval test run tests/deepeval/ -v
 ```
 
 ## Configuration

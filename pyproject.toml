@@ -49,7 +49,7 @@ target-version = "py312"
 exclude = ["src/ceramicraft_customer_support_agent/pb/"]
 
 [tool.ty.src]
-exclude = ["src/ceramicraft_customer_support_agent/pb/", "deepeval/"]
+exclude = ["src/ceramicraft_customer_support_agent/pb/", "tests/deepeval/"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
