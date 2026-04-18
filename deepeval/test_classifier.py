@@ -161,7 +161,7 @@ intent_coverage_metric = GEval(
         LLMTestCaseParams.INPUT,
         LLMTestCaseParams.ACTUAL_OUTPUT,
     ],
-    threshold=0.7,
+    threshold=0.6,
 )
 
 

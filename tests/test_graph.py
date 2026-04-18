@@ -21,6 +21,7 @@ def test_agent_state_structure():
         "intent": "browse",
         "last_intent": "",
         "auth_token": "token123",
+        "blocked": False,
     }
 
     assert "messages" in state
