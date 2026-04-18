@@ -76,6 +76,7 @@ async def test_build_graph_creates_all_nodes(
 
     # Check that all nodes were added
     expected_nodes = [
+        "input_guard",
         "classifier",
         "browse",
         "cart",
@@ -94,16 +95,22 @@ async def test_build_graph_creates_all_nodes(
         assert node in add_node_calls
 
     # Check that entry point was set
-    mock_graph_instance.set_entry_point.assert_called_once_with("classifier")
+    mock_graph_instance.set_entry_point.assert_called_once_with("input_guard")
 
     # Check that finish point was set
     mock_graph_instance.set_finish_point.assert_called_once_with("guard")
 
-    # Check conditional routing edges were added from classifier
-    mock_graph_instance.add_conditional_edges.assert_called_once()
-    routing_arg = mock_graph_instance.add_conditional_edges.call_args[0]
-    assert routing_arg[0] == "classifier"
-    routing_map = mock_graph_instance.add_conditional_edges.call_args[0][2]
+    # Check conditional routing edges were added (input_guard + classifier)
+    assert mock_graph_instance.add_conditional_edges.call_count == 2
+
+    # Find the classifier routing call
+    classifier_calls = [
+        c
+        for c in mock_graph_instance.add_conditional_edges.call_args_list
+        if c[0][0] == "classifier"
+    ]
+    assert len(classifier_calls) == 1
+    routing_map = classifier_calls[0][0][2]
     for intent in [
         "browse",
         "cart",

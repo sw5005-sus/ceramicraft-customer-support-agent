@@ -15,7 +15,7 @@ from typing_extensions import Annotated
 
 from ceramicraft_customer_support_agent.classifier import build_classifier
 from ceramicraft_customer_support_agent.config import get_settings
-from ceramicraft_customer_support_agent.guard import build_guard
+from ceramicraft_customer_support_agent.guard import build_guard, build_input_guard
 from ceramicraft_customer_support_agent.nodes import (
     build_chitchat_node,
     build_escalate_node,
@@ -78,6 +78,7 @@ class AgentState(TypedDict):
     intent: str  # classifier output
     last_intent: str  # previous turn's intent for continuity
     auth_token: str | None
+    blocked: bool  # set by input_guard when injection detected
 
 
 async def build_graph(tools: Sequence[BaseTool], checkpointer: Any = None) -> Any:
@@ -96,6 +97,7 @@ async def build_graph(tools: Sequence[BaseTool], checkpointer: Any = None) -> An
 
     graph = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
 
+    input_guard = build_input_guard()
     classifier = build_classifier()
     guard = build_guard()
 
@@ -107,6 +109,7 @@ async def build_graph(tools: Sequence[BaseTool], checkpointer: Any = None) -> An
     chitchat_node = build_chitchat_node()
     escalate_node = build_escalate_node()
 
+    graph.add_node("input_guard", input_guard)
     graph.add_node("classifier", classifier)
     domain_subgraphs = [
         ("browse", browse_agent),
@@ -122,7 +125,14 @@ async def build_graph(tools: Sequence[BaseTool], checkpointer: Any = None) -> An
     graph.add_node("escalate", escalate_node)
     graph.add_node("guard", guard)
 
-    graph.set_entry_point("classifier")
+    graph.set_entry_point("input_guard")
+
+    # input_guard → classifier (safe) or guard (blocked, short-circuit)
+    graph.add_conditional_edges(
+        "input_guard",
+        _route_input_guard,
+        {"classifier": "classifier", "guard": "guard"},
+    )
 
     domain_names = [name for name, _ in domain_subgraphs]
     graph.add_conditional_edges(
@@ -152,6 +162,13 @@ def route_by_intent(state: AgentState) -> str:
     intent = state.get("intent", "chitchat")
     logger.info("Routing to %s based on intent", intent)
     return intent
+
+
+def _route_input_guard(state: AgentState) -> str:
+    """Route after input guard: skip to output guard if blocked."""
+    if state.get("blocked"):
+        return "guard"
+    return "classifier"
 
 
 def _sanitize_messages(messages: list) -> list:
