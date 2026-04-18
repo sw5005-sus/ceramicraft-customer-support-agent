@@ -9,6 +9,8 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 ```
   User ── POST /chat ──▶ FastAPI ──▶ LangGraph StateGraph
        ── gRPC Chat  ──▶ gRPC   ──┘        │
+                                     Input Guard (injection detection)
+                                          │
                                      Classifier (LLM)
                                           │
                           ┌───────────────┼───────────────┐
@@ -18,7 +20,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
                           │               │               │
                           └───────┬───────┘───────────────┘
                                   ▼
-                          Guard (auth + confirm)
+                            Guard (auth)
                                   │
                                   ▼
                         MCP Server ──▶ Backend Services
@@ -26,6 +28,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 
 **Key components:**
 
+- **Input Guard** — Pre-LLM screening: detects prompt injection / jailbreak attempts (7 pattern categories) and blocks before reaching any LLM node
 - **Classifier** — LLM-based intent detection: `browse`, `cart`, `order`, `review`, `account`, `chitchat`, `escalate`
 - **Domain Subgraphs** — Stateless ReAct agents, each with filtered MCP tools
 - **Guard** — Post-processing: auth checks + sensitive operation confirmation (`create_order`, `delete_address`, `confirm_receipt`)
@@ -71,6 +74,9 @@ uv run ruff check .        # Lint
 uv run ruff format .       # Format
 uv run ty check            # Type check
 uv run pytest --cov=src/ceramicraft_customer_support_agent --cov-report=term-missing  # Test
+
+# DeepEval LLM evaluation (requires OPENAI_API_KEY)
+OPENAI_API_KEY=... PYTHONPATH=src uv run deepeval test run deepeval/ -v
 ```
 
 ## Configuration
