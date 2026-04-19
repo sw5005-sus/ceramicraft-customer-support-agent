@@ -17,6 +17,7 @@ import dttb
 import grpc
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from starlette.responses import StreamingResponse
@@ -90,6 +91,22 @@ app = FastAPI(
     title="CeramiCraft Customer Support Agent",
     lifespan=lifespan,
 )
+
+# --- CORS ---
+_cors_raw = get_settings().CS_AGENT_CORS_ORIGINS.strip()
+if _cors_raw:
+    _origins = (
+        ["*"]
+        if _cors_raw == "*"
+        else [o.strip() for o in _cors_raw.split(",") if o.strip()]
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 
 # ---------- request / response models ----------

@@ -41,6 +41,10 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = Field(default=5432)
     CS_AGENT_DB_NAME: str = "cs_agent_db"
 
+    # CORS — comma-separated allowed origins (e.g. "https://chat.ceramicraft.com,http://localhost:5173")
+    # Set to "*" to allow all origins (dev only).
+    CS_AGENT_CORS_ORIGINS: str = ""
+
     # Max messages to pass to subgraphs (older messages are trimmed)
     CS_AGENT_MAX_HISTORY: int = 20
 
