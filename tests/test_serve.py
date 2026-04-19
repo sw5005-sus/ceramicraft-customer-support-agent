@@ -269,3 +269,168 @@ def test_openapi_docs_available(client):
     """GET /docs should return the Swagger UI."""
     resp = client.get("/docs")
     assert resp.status_code == 200
+
+
+# ---------- SSE /chat/stream tests ----------
+
+
+def _parse_sse(raw_text: str) -> list[dict]:
+    """Parse SSE text into a list of {event, data} dicts."""
+    import json as _json
+
+    events = []
+    current_event = None
+    current_data = ""
+    for line in raw_text.split("\n"):
+        if line.startswith("event: "):
+            current_event = line[7:]
+        elif line.startswith("data: "):
+            current_data = line[6:]
+        elif line == "":
+            if current_event is not None:
+                events.append(
+                    {"event": current_event, "data": _json.loads(current_data)}
+                )
+                current_event = None
+                current_data = ""
+    return events
+
+
+def _make_stream_agent(ai_content="Hello!", intent="chitchat"):
+    """Create a mock agent that supports astream with updates mode."""
+    ai_msg = MagicMock()
+    ai_msg.type = "ai"
+    ai_msg.content = ai_content
+
+    async def _astream(state, config, stream_mode="updates"):
+        yield {"input_guard": {"blocked": False}}
+        yield {"classifier": {"intent": intent, "last_intent": intent}}
+        yield {intent: {"messages": [ai_msg]}}
+        yield {"guard": {"messages": []}}
+
+    mock_agent = MagicMock()
+    mock_agent.astream = _astream
+    # Keep ainvoke for /chat tests
+    mock_agent.ainvoke = AsyncMock(
+        return_value={"messages": [ai_msg], "intent": intent}
+    )
+    return mock_agent
+
+
+def test_chat_stream_returns_sse_events(client):
+    """POST /chat/stream should return SSE events."""
+    _agent_cache["agent"] = _make_stream_agent("Hi there!", "chitchat")
+
+    resp = client.post(
+        "/chat/stream",
+        json={"message": "hello", "thread_id": "t-stream"},
+    )
+
+    assert resp.status_code == 200
+    assert "text/event-stream" in resp.headers["content-type"]
+
+    events = _parse_sse(resp.text)
+    event_types = [e["event"] for e in events]
+
+    assert "guarding" in event_types
+    assert "classifying" in event_types
+    assert "processing" in event_types
+    assert "reply" in event_types
+    assert "done" in event_types
+
+    # Check reply content
+    reply_event = next(e for e in events if e["event"] == "reply")
+    assert reply_event["data"]["content"] == "Hi there!"
+
+    # Check done has thread_id
+    done_event = next(e for e in events if e["event"] == "done")
+    assert done_event["data"]["thread_id"] == "t-stream"
+
+
+def test_chat_stream_includes_intent_in_processing(client):
+    """POST /chat/stream processing event should include the intent."""
+    _agent_cache["agent"] = _make_stream_agent("OK", "order")
+
+    resp = client.post("/chat/stream", json={"message": "my orders"})
+
+    events = _parse_sse(resp.text)
+    processing_event = next(e for e in events if e["event"] == "processing")
+    assert processing_event["data"]["intent"] == "order"
+    assert processing_event["data"]["stage"] == "order"
+
+
+def test_chat_stream_auto_generates_thread_id(client):
+    """POST /chat/stream without thread_id should auto-generate one."""
+    _agent_cache["agent"] = _make_stream_agent()
+
+    resp = client.post("/chat/stream", json={"message": "hi"})
+
+    events = _parse_sse(resp.text)
+    done_event = next(e for e in events if e["event"] == "done")
+    assert len(done_event["data"]["thread_id"]) == 32
+
+
+def test_chat_stream_handles_error(client):
+    """POST /chat/stream should emit error event on agent failure."""
+    async def _failing_astream(state, config, stream_mode="updates"):
+        raise RuntimeError("boom")
+        yield  # noqa: RET503  — make it an async generator
+
+    mock_agent = MagicMock()
+    mock_agent.astream = _failing_astream
+    _agent_cache["agent"] = mock_agent
+
+    resp = client.post(
+        "/chat/stream",
+        json={"message": "hi", "thread_id": "t-err"},
+    )
+
+    assert resp.status_code == 200  # SSE always starts 200
+    events = _parse_sse(resp.text)
+    event_types = [e["event"] for e in events]
+    assert "error" in event_types
+    assert "done" in event_types
+
+
+def test_chat_stream_extracts_bearer_token(client):
+    """POST /chat/stream should pass Bearer token to set_auth_token."""
+    _agent_cache["agent"] = _make_stream_agent()
+
+    with patch("serve.set_auth_token") as mock_set:
+        resp = client.post(
+            "/chat/stream",
+            json={"message": "hi"},
+            headers={"Authorization": "Bearer stream_tok"},
+        )
+
+    assert resp.status_code == 200
+    mock_set.assert_called_with("stream_tok")
+
+
+def test_chat_stream_fallback_on_empty_reply(client):
+    """POST /chat/stream should return fallback when no AI content."""
+    async def _empty_astream(state, config, stream_mode="updates"):
+        yield {"input_guard": {"blocked": False}}
+        yield {"classifier": {"intent": "chitchat"}}
+        yield {"chitchat": {"messages": []}}
+        yield {"guard": {"messages": []}}
+
+    mock_agent = MagicMock()
+    mock_agent.astream = _empty_astream
+    _agent_cache["agent"] = mock_agent
+
+    resp = client.post("/chat/stream", json={"message": "hi"})
+
+    events = _parse_sse(resp.text)
+    reply_event = next(e for e in events if e["event"] == "reply")
+    assert "couldn't process" in reply_event["data"]["content"]
+
+
+def test_chat_stream_no_cache_headers(client):
+    """POST /chat/stream should include no-cache and no-buffering headers."""
+    _agent_cache["agent"] = _make_stream_agent()
+
+    resp = client.post("/chat/stream", json={"message": "hi"})
+
+    assert resp.headers.get("cache-control") == "no-cache"
+    assert resp.headers.get("x-accel-buffering") == "no"

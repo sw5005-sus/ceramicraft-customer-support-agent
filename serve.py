@@ -5,9 +5,11 @@ following the same dual-server pattern as notification-ms.
 """
 
 import asyncio
+import json
 import logging
 import os
 import uuid
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -17,6 +19,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from starlette.responses import StreamingResponse
 
 from ceramicraft_customer_support_agent.config import get_settings
 
@@ -175,6 +178,134 @@ async def chat(body: ChatRequest, request: Request):
 
     return ChatResponse(
         reply="I'm sorry, I couldn't process your request.", thread_id=thread_id
+    )
+
+
+def _sse_event(event: str, data: dict) -> str:
+    """Format a Server-Sent Event."""
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+# Nodes in the graph whose completion maps to an SSE stage event.
+_STAGE_EVENTS: dict[str, str] = {
+    "input_guard": "guarding",
+    "classifier": "classifying",
+}
+# Domain subgraph nodes — all map to "processing".
+_DOMAIN_NODES = frozenset(
+    {"browse", "cart", "order", "review", "account", "chitchat", "escalate"}
+)
+
+
+@app.post("/chat/stream")
+async def chat_stream(body: ChatRequest, request: Request):
+    """Chat with the CS agent, streaming progress via Server-Sent Events.
+
+    SSE event types:
+        classifying  — intent classification started
+        processing   — domain subgraph running (data includes intent)
+        reply        — final assistant reply text
+        error        — an error occurred
+        done         — stream complete (data includes thread_id)
+    """
+    token = _extract_bearer_token(request)
+    thread_id = body.thread_id or uuid.uuid4().hex
+
+    async def _generate() -> AsyncGenerator[str, None]:
+        try:
+            agent = _agent_cache["agent"]
+            set_auth_token(token)
+
+            initial_state = {
+                "messages": [{"role": "user", "content": body.message}],
+                "auth_token": token,
+            }
+
+            intent = "unknown"
+            reply = ""
+
+            async for chunk in agent.astream(
+                initial_state,
+                config={"configurable": {"thread_id": thread_id}},
+                stream_mode="updates",
+            ):
+                # chunk is a dict of {node_name: state_update}
+                for node_name, update in chunk.items():
+                    # Emit stage events
+                    if node_name in _STAGE_EVENTS:
+                        yield _sse_event(
+                            _STAGE_EVENTS[node_name], {"stage": node_name}
+                        )
+                    elif node_name in _DOMAIN_NODES:
+                        # Capture intent from previous classifier update
+                        if isinstance(update, dict) and "intent" in update:
+                            intent = update["intent"]
+                        yield _sse_event(
+                            "processing",
+                            {"stage": node_name, "intent": intent},
+                        )
+
+                    # Track intent from classifier node
+                    if (
+                        node_name == "classifier"
+                        and isinstance(update, dict)
+                        and "intent" in update
+                    ):
+                        intent = update["intent"]
+
+                    # Extract reply from the final messages
+                    if isinstance(update, dict) and "messages" in update:
+                        for msg in reversed(update["messages"]):
+                            if (
+                                hasattr(msg, "type")
+                                and msg.type == "ai"
+                                and msg.content
+                            ):
+                                reply = msg.content
+                                break
+                            if (
+                                isinstance(msg, dict)
+                                and msg.get("role") == "assistant"
+                                and msg.get("content")
+                            ):
+                                reply = msg["content"]
+                                break
+
+            if reply:
+                yield _sse_event("reply", {"content": reply})
+            else:
+                yield _sse_event(
+                    "reply",
+                    {"content": "I'm sorry, I couldn't process your request."},
+                )
+
+            tag_trace(
+                {
+                    "intent": intent,
+                    "authenticated": "true" if token else "false",
+                    "thread_id": thread_id,
+                }
+            )
+
+        except Exception:
+            logger.exception("Stream chat failed")
+            yield _sse_event(
+                "error",
+                {
+                    "message": "Sorry, something went wrong processing your request. "
+                    "Please try again."
+                },
+            )
+
+        yield _sse_event("done", {"thread_id": thread_id})
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
