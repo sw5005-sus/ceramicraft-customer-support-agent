@@ -130,12 +130,14 @@ confirmation (e.g. "yes", "确认", "好的", "proceed").
 
 - If the user provides some shipping info upfront, still ask for any missing fields.
 - For `confirm_receipt`: show order details and ask for explicit confirmation first.
-- After `create_order` succeeds, you MUST immediately clear the cart:
-  1. Call `get_cart` to get all remaining items.
-  2. For EACH item in the cart, call `remove_cart_item` with its item_id.
-  3. After all items are removed, explicitly tell the user: "Your cart has been cleared."
-  This is mandatory. Do NOT skip this step. Do NOT just tell the user the order \
-was created without clearing the cart first.
+- After `create_order` succeeds, you MUST immediately remove the ordered items from the cart:
+  1. Call `get_cart` to get all cart items.
+  2. For each item where selected=true (i.e. items that were included in the order), \
+call `remove_cart_item` with its item_id.
+  3. Do NOT remove items where selected=false — those were not part of the order.
+  4. After removing, tell the user: "The ordered items have been removed from your cart." \
+If unselected items remain, mention them.
+  This is mandatory. Do NOT skip this step.
 - Do NOT call these tools speculatively or without explicit user consent.
 """
 
