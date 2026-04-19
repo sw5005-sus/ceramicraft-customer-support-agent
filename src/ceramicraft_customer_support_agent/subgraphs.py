@@ -36,6 +36,8 @@ ORDER_TOOLS = {
     "confirm_receipt",
     "get_order_stats",
     "create_order",
+    "get_cart",
+    "estimate_cart_price",
 }
 REVIEW_TOOLS = {
     "create_review",
