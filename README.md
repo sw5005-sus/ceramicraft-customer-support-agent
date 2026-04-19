@@ -39,7 +39,8 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/chat` | POST | Send message. Body: `{"message": "...", "thread_id": "..."}`. Omit `thread_id` for new conversation. |
+| `/chat` | POST | Send message. Body: `{"message": "...", "thread_id": "..."}`. Omit `thread_id` for new conversation. Returns `{"reply": "...", "thread_id": "..."}`. |
+| `/chat/stream` | POST | Same request body as `/chat`, but returns `text/event-stream` (SSE). Events: `guarding` → `classifying` → `processing` (with intent) → `reply` (with content) → `done` (with thread_id). On error: `error` → `done`. |
 | `/reset` | POST | Reset conversation. Query: `?thread_id=...` |
 | `/cs-agent/v1/ping` | GET | Readiness probe (503 until ready) |
 | `/docs` | GET | Swagger UI |
@@ -61,7 +62,7 @@ Proto definition: [`protos/cs_agent.proto`](protos/cs_agent.proto)
 |----------|-------|------|
 | Product | `search_products`, `get_product` | Public |
 | Cart | `get_cart`, `add_to_cart`, `update_cart_item`, `remove_cart_item`, `estimate_cart_price` | User |
-| Order | `list_my_orders`, `get_order_detail`, `confirm_receipt`, `get_order_stats`, `create_order` | User |
+| Order | `list_my_orders`, `get_order_detail`, `confirm_receipt`, `get_order_stats`, `create_order`, `get_cart`, `estimate_cart_price`, `remove_cart_item` | User |
 | Review | `list_product_reviews`, `get_user_reviews`, `create_review`, `like_review` | Mixed |
 | Account | `get_my_profile`, `update_my_profile`, `list_my_addresses`, `create_address`, `update_address`, `delete_address`, `get_pay_account`, `top_up_account` | User |
 

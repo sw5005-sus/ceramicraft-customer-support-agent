@@ -81,6 +81,19 @@ curl -s -X POST http://localhost:8080/chat `
   -d "{`"message`": `"show me some bowls`", `"thread_id`": `"$env:THREAD`"}" | uv run python -m json.tool
 ```
 
+### SSE Streaming
+
+Use `/chat/stream` for real-time progress events:
+
+```powershell
+curl -N -X POST http://localhost:8080/chat/stream `
+  -H "Content-Type: application/json" `
+  -H "Authorization: Bearer $env:TOKEN" `
+  -d '{"message": "hello"}'
+```
+
+Events arrive as: `guarding` → `classifying` → `processing` → `reply` → `done`.
+
 ## 5. Demo Scenarios
 
 | # | Intent | Example Message | Key Behavior |
