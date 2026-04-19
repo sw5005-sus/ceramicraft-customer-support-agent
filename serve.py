@@ -100,8 +100,8 @@ if _cors_raw:
         if _cors_raw == "*"
         else [o.strip() for o in _cors_raw.split(",") if o.strip()]
     )
-    app.add_middleware(  # type: ignore[arg-type]
-        CORSMiddleware,
+    app.add_middleware(
+        CORSMiddleware,  # type: ignore[arg-type]  # ty: ignore[invalid-argument-type]
         allow_origins=_origins,
         allow_credentials=True,
         allow_methods=["*"],
