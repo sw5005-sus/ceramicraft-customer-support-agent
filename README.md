@@ -101,6 +101,7 @@ OPENAI_API_KEY=... uv run deepeval test run tests/deepeval/ -v
 | `CS_AGENT_LANGSMITH_PROJECT` | LangSmith project name | `customer-support-agent` |
 | `MLFLOW_TRACKING_URI` | MLflow server URL | *(optional)* |
 | `CS_AGENT_MLFLOW_EXPERIMENT_NAME` | MLflow experiment | `customer-support-agent` |
+| `CS_AGENT_CORS_ORIGINS` | Allowed CORS origins (comma-separated, or `*`). Empty = CORS disabled. | *(empty)* |
 
 ## Documentation
 
