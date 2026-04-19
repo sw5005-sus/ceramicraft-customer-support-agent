@@ -1,5 +1,6 @@
 """Tests for the FastAPI serve module (production entrypoint)."""
 
+import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -276,8 +277,6 @@ def test_openapi_docs_available(client):
 
 def _parse_sse(raw_text: str) -> list[dict]:
     """Parse SSE text into a list of {event, data} dicts."""
-    import json as _json
-
     events = []
     current_event = None
     current_data = ""
@@ -289,7 +288,7 @@ def _parse_sse(raw_text: str) -> list[dict]:
         elif line == "":
             if current_event is not None:
                 events.append(
-                    {"event": current_event, "data": _json.loads(current_data)}
+                    {"event": current_event, "data": json.loads(current_data)}
                 )
                 current_event = None
                 current_data = ""
@@ -372,6 +371,7 @@ def test_chat_stream_auto_generates_thread_id(client):
 
 def test_chat_stream_handles_error(client):
     """POST /chat/stream should emit error event on agent failure."""
+
     async def _failing_astream(state, config, stream_mode="updates"):
         raise RuntimeError("boom")
         yield  # noqa: RET503  — make it an async generator
@@ -409,6 +409,7 @@ def test_chat_stream_extracts_bearer_token(client):
 
 def test_chat_stream_fallback_on_empty_reply(client):
     """POST /chat/stream should return fallback when no AI content."""
+
     async def _empty_astream(state, config, stream_mode="updates"):
         yield {"input_guard": {"blocked": False}}
         yield {"classifier": {"intent": "chitchat"}}

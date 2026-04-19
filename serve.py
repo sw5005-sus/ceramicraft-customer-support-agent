@@ -233,9 +233,7 @@ async def chat_stream(body: ChatRequest, request: Request):
                 for node_name, update in chunk.items():
                     # Emit stage events
                     if node_name in _STAGE_EVENTS:
-                        yield _sse_event(
-                            _STAGE_EVENTS[node_name], {"stage": node_name}
-                        )
+                        yield _sse_event(_STAGE_EVENTS[node_name], {"stage": node_name})
                     elif node_name in _DOMAIN_NODES:
                         # Capture intent from previous classifier update
                         if isinstance(update, dict) and "intent" in update:
