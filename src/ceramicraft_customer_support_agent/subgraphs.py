@@ -38,6 +38,7 @@ ORDER_TOOLS = {
     "create_order",
     "get_cart",
     "estimate_cart_price",
+    "remove_cart_item",
 }
 REVIEW_TOOLS = {
     "create_review",
