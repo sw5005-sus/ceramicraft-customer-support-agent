@@ -26,14 +26,14 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
                         MCP Server ──▶ Backend Services
 ```
 
-**Key components:**
+Key components:
 
-- **Input Guard** — Pre-LLM screening: detects prompt injection / jailbreak attempts (7 pattern categories) and blocks before reaching any LLM node
-- **Classifier** — LLM-based intent detection: `browse`, `cart`, `order`, `review`, `account`, `chitchat`, `escalate`
-- **Domain Subgraphs** — Stateless ReAct agents, each with filtered MCP tools
-- **Guard** — Post-processing: auth checks + sensitive operation confirmation (`create_order`, `delete_address`, `confirm_receipt`)
-- **PersistentMCPClient** — Singleton; tool list cached at startup. Adding tools on MCP server requires no agent changes
-- **AsyncPostgresSaver** — Conversation checkpointer keyed by `thread_id`
+- Input Guard — Pre-LLM screening: detects prompt injection / jailbreak attempts (7 pattern categories) and blocks before reaching any LLM node
+- Classifier — LLM-based intent detection: `browse`, `cart`, `order`, `review`, `account`, `chitchat`, `escalate`
+- Domain Subgraphs — Stateless ReAct agents, each with filtered MCP tools
+- Guard — Post-processing: auth checks + sensitive operation confirmation (`create_order`, `delete_address`, `confirm_receipt`)
+- PersistentMCPClient — Singleton; tool list cached at startup. Adding tools on MCP server requires no agent changes
+- AsyncPostgresSaver — Conversation checkpointer keyed by `thread_id`
 
 ## REST API
 
