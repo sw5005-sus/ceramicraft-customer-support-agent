@@ -45,6 +45,13 @@ def test_system_prompt_mentions_auth():
     assert "Search products and view product details" in SYSTEM_PROMPT
 
 
+def test_system_prompt_has_strong_language_rule():
+    """SYSTEM_PROMPT should keep replies in the user's language."""
+    assert "latest user message" in SYSTEM_PROMPT
+    assert "Product names may remain in English" in SYSTEM_PROMPT
+    assert "follow-up questions must stay in the user's language" in SYSTEM_PROMPT
+
+
 def test_browse_prompt_exists():
     """BROWSE_PROMPT should exist and be appropriate for product browsing."""
     assert isinstance(BROWSE_PROMPT, str)
@@ -216,6 +223,21 @@ def test_prompts_have_guidelines():
             or "Guidelines:" in prompt
             or "focus on" in prompt.lower()
         )
+
+
+def test_domain_prompts_reinforce_language_rule():
+    """Each response-generating domain should preserve the user's language."""
+    domain_prompts = [
+        BROWSE_PROMPT,
+        CART_PROMPT,
+        ORDER_PROMPT,
+        REVIEW_PROMPT,
+        ACCOUNT_PROMPT,
+        CHITCHAT_PROMPT,
+    ]
+
+    for prompt in domain_prompts:
+        assert "Reply in the same language as the user's latest message" in prompt
 
 
 def test_prompts_are_comprehensive():
