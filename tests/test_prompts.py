@@ -134,6 +134,9 @@ def test_order_prompt_mentions_key_concepts():
     assert "history" in ORDER_PROMPT.lower()
     assert "status" in ORDER_PROMPT.lower()
     assert "delivery" in ORDER_PROMPT.lower()
+    assert "get_my_profile" in ORDER_PROMPT
+    assert "list_my_addresses" in ORDER_PROMPT
+    assert "default address" in ORDER_PROMPT.lower()
 
 
 def test_review_prompt_mentions_key_concepts():

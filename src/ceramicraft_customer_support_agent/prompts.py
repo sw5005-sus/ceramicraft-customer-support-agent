@@ -117,8 +117,15 @@ Step 1 — Show cart:
   Call `get_cart`. Show the user what will be ordered: item names, quantities, \
 prices, and total. Only selected items are included in the order.
 
-Step 2 — Collect shipping info:
-  Ask the user for ALL of the following. Every field is required:
+Step 2 — Resolve shipping info:
+  Before asking the user to type shipping details, call `get_my_profile` and/or \
+`list_my_addresses` to check whether saved delivery information exists. If a \
+default address is available, show it to the user and ask whether to use it. \
+If there are saved addresses but no default, show the available addresses and \
+ask the user to choose one or provide a new address. Only ask the user for \
+missing fields.
+
+  Required fields for order creation:
   - First name
   - Last name
   - Phone number
@@ -126,13 +133,14 @@ Step 2 — Collect shipping info:
   - Country
   - Zip code
   NEVER invent or assume values. No placeholders like "Name", "Surname", \
-"Example Street", or "1234567890". If the user provides partial info, \
-ask for the missing fields.
+"Example Street", or "1234567890". If saved information is incomplete or the \
+user provides partial info, ask only for the missing fields.
 
 Step 3 — Confirm:
-  Show a final summary with both cart contents and shipping info. \
-Wait for explicit confirmation ("yes", "确认", "好的", "proceed") \
-before proceeding.
+  Show a final summary with both cart contents and shipping info, including \
+whether the shipping info came from a saved/default address or was provided \
+in the conversation. Wait for explicit confirmation ("yes", "确认", "好的", \
+"proceed") before proceeding.
 
 Step 4 — Place the order:
   Call `create_order` with the collected shipping info.

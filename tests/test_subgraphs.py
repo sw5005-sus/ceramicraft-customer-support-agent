@@ -87,6 +87,8 @@ def test_build_order_subgraph(mock_create_react, mock_llm_cls):
         "list_my_orders",
         "get_order_detail",
         "create_order",
+        "get_my_profile",
+        "list_my_addresses",
         "unrelated_tool",
     ]:
         tool = MagicMock()
@@ -102,8 +104,14 @@ def test_build_order_subgraph(mock_create_react, mock_llm_cls):
     tools_arg = call_args.kwargs["tools"]
     tool_names = {tool.name for tool in tools_arg}
 
-    expected_tools = {"list_my_orders", "get_order_detail", "create_order"}
-    assert tool_names.issubset(expected_tools)
+    expected_tools = {
+        "list_my_orders",
+        "get_order_detail",
+        "create_order",
+        "get_my_profile",
+        "list_my_addresses",
+    }
+    assert tool_names == expected_tools
     assert "checkpointer" not in call_args.kwargs
     assert result is mock_agent
 
