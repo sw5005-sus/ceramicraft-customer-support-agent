@@ -122,6 +122,20 @@ def test_browse_prompt_mentions_key_concepts():
     assert "price" in BROWSE_PROMPT.lower()
 
 
+def test_browse_prompt_uses_current_catalog_search_strategy():
+    """BROWSE_PROMPT should not force English product names into Chinese search."""
+    assert "usually English" in BROWSE_PROMPT
+    assert "as-is first" in BROWSE_PROMPT
+    assert "White Glaze Mug" in BROWSE_PROMPT
+    assert (
+        "Do not translate English product names to Chinese before searching"
+        in BROWSE_PROMPT
+    )
+    assert "pottery" in BROWSE_PROMPT
+    assert "ceramics" in BROWSE_PROMPT
+    assert "Product names in the database are in Chinese" not in BROWSE_PROMPT
+
+
 def test_cart_prompt_mentions_key_concepts():
     """CART_PROMPT should mention cart-specific concepts."""
     assert "cart" in CART_PROMPT.lower()

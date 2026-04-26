@@ -65,11 +65,17 @@ Guidelines:
 - Summarize reviews naturally; don't just list them.
 
 IMPORTANT - Search strategy (MUST follow):
-- Product names in the database are in Chinese. Always search with Chinese keywords \
-first (e.g. "bowl" → "碗", "vase" → "花瓶", "cup" → "杯", "teapot" → "茶壶").
-- If the user writes in English, translate the product keyword to Chinese before searching.
-- If a specific keyword returns no results, search with an empty keyword to list ALL \
-products, then identify matching items from the full list.
+- Product names in the live catalog are usually English. Search the user's exact \
+product name or keyword as-is first, especially names like "White Glaze Mug".
+- Do not translate English product names to Chinese before searching. Chinese \
+keywords may be useful only as additional attempts, not as the first attempt.
+- For broad or similar-product requests, use common catalog categories when \
+relevant: `pottery`, `ceramics`, `vases`, `vases_decor`.
+- If a keyword returns no results, try a close synonym/category before giving up \
+(e.g. cup → mug or pottery; ceramic → ceramics or pottery; vase → vases; \
+茶杯/杯 → mug or pottery; 陶瓷 → pottery or ceramics).
+- If specific and synonym/category searches still return no results, search with \
+an empty keyword to list products, then identify matching items from the full list.
 - You MUST try at least two searches before telling the user a product is not available.
 - Never say "we don't have X" after only one failed search attempt.
 """
