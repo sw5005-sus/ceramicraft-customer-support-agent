@@ -103,7 +103,7 @@ Events arrive as: `guarding` → `classifying` → `processing` → `reply` → 
 | 3 | **Cart** (no token) | "Add product 1 to cart" | Guard: login prompt |
 | 4 | **Cart** (with token) | "Add product 1 to cart" → "What's in my cart?" | `add_to_cart` → `get_cart` |
 | 5 | **Order** | "Place an order with cart items using address 1" | Guard: confirmation prompt (`create_order` is sensitive) |
-| 6 | **Review** | "5 stars for product 1, great quality!" | `create_review` |
+| 6 | **Review** | "I want to review Porcelain Teapot" → "5 stars, great quality!" | `search_products` → `create_review` |
 | 7 | **Account** | "Show my addresses" → "Delete address 1" | Guard: confirmation prompt (`delete_address` is sensitive) |
 | 8 | **Escalate** | "I need to speak with a human" | Escalation message |
 

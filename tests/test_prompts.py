@@ -169,6 +169,12 @@ def test_review_prompt_mentions_key_concepts():
     assert "product" in REVIEW_PROMPT.lower()
     assert "own review history" in REVIEW_PROMPT.lower()
     assert "product ID" in REVIEW_PROMPT
+    assert "Resolving product names to product IDs" in REVIEW_PROMPT
+    assert "Do not ask ordinary users to know internal product IDs" in REVIEW_PROMPT
+    assert (
+        "Product review browsing/reading belongs to the browse specialist"
+        in REVIEW_PROMPT
+    )
 
 
 def test_account_prompt_mentions_key_concepts():

@@ -124,7 +124,15 @@ def test_build_review_subgraph(mock_create_react, mock_llm_cls):
     """build_review_subgraph should filter tools and create agent."""
     mock_tools = []
 
-    for name in ["create_review", "like_review", "get_user_reviews", "unrelated_tool"]:
+    for name in [
+        "create_review",
+        "like_review",
+        "get_user_reviews",
+        "search_products",
+        "get_product",
+        "list_product_reviews",
+        "unrelated_tool",
+    ]:
         tool = MagicMock()
         tool.name = name
         mock_tools.append(tool)
@@ -138,8 +146,15 @@ def test_build_review_subgraph(mock_create_react, mock_llm_cls):
     tools_arg = call_args.kwargs["tools"]
     tool_names = {tool.name for tool in tools_arg}
 
-    expected_tools = {"create_review", "like_review", "get_user_reviews"}
-    assert tool_names.issubset(expected_tools)
+    expected_tools = {
+        "create_review",
+        "like_review",
+        "get_user_reviews",
+        "search_products",
+        "get_product",
+    }
+    assert tool_names == expected_tools
+    assert "list_product_reviews" not in tool_names
     assert "checkpointer" not in call_args.kwargs
     assert result is mock_agent
 

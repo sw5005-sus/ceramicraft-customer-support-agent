@@ -45,7 +45,8 @@ REVIEW_TOOLS = {
     "create_review",
     "like_review",
     "get_user_reviews",
-    "list_product_reviews",
+    "search_products",
+    "get_product",
 }
 ACCOUNT_TOOLS = {
     "get_my_profile",
