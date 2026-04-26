@@ -62,7 +62,7 @@ Proto definition: [`protos/cs_agent.proto`](protos/cs_agent.proto)
 |----------|-------|------|
 | Product | `search_products`, `get_product` | Public |
 | Cart | `get_cart`, `add_to_cart`, `update_cart_item`, `remove_cart_item`, `estimate_cart_price` | User |
-| Order | `list_my_orders`, `get_order_detail`, `confirm_receipt`, `get_order_stats`, `create_order`, `get_cart`, `estimate_cart_price`, `remove_cart_item` | User |
+| Order | `list_my_orders`, `get_order_detail`, `confirm_receipt`, `create_order`, `get_cart`, `estimate_cart_price`, `remove_cart_item`, `get_my_profile`, `list_my_addresses` | User |
 | Review | `list_product_reviews`, `get_user_reviews`, `create_review`, `like_review` | Mixed |
 | Account | `get_my_profile`, `update_my_profile`, `list_my_addresses`, `create_address`, `update_address`, `delete_address`, `get_pay_account`, `top_up_account` | User |
 

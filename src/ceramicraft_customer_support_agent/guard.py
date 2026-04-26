@@ -156,7 +156,7 @@ def build_guard() -> Callable:
 
         if needs_auth_prompt and not auth_token:
             auth_message = (
-                "To access your account information, cart, orders, or create reviews, "
+                "To access your account information, cart, orders, or reviews, "
                 "you'll need to log in first. Please visit our website to sign in, "
                 "then come back and I'll be happy to help!"
             )

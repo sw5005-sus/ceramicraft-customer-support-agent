@@ -41,6 +41,8 @@ def test_system_prompt_mentions_auth():
     """SYSTEM_PROMPT should mention login requirements."""
     assert "login" in SYSTEM_PROMPT.lower()
     assert "auth" in SYSTEM_PROMPT.lower() or "log in" in SYSTEM_PROMPT.lower()
+    assert "read product reviews" in SYSTEM_PROMPT.lower()
+    assert "Search products and view product details" in SYSTEM_PROMPT
 
 
 def test_browse_prompt_exists():
@@ -144,6 +146,8 @@ def test_review_prompt_mentions_key_concepts():
     assert "review" in REVIEW_PROMPT.lower()
     assert "write" in REVIEW_PROMPT.lower() or "writing" in REVIEW_PROMPT.lower()
     assert "product" in REVIEW_PROMPT.lower()
+    assert "own review history" in REVIEW_PROMPT.lower()
+    assert "product ID" in REVIEW_PROMPT
 
 
 def test_account_prompt_mentions_key_concepts():

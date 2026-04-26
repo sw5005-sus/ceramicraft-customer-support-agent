@@ -89,6 +89,7 @@ def test_build_order_subgraph(mock_create_react, mock_llm_cls):
         "create_order",
         "get_my_profile",
         "list_my_addresses",
+        "get_order_stats",
         "unrelated_tool",
     ]:
         tool = MagicMock()
@@ -112,6 +113,7 @@ def test_build_order_subgraph(mock_create_react, mock_llm_cls):
         "list_my_addresses",
     }
     assert tool_names == expected_tools
+    assert "get_order_stats" not in tool_names
     assert "checkpointer" not in call_args.kwargs
     assert result is mock_agent
 

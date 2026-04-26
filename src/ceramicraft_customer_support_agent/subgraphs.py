@@ -34,7 +34,6 @@ ORDER_TOOLS = {
     "list_my_orders",
     "get_order_detail",
     "confirm_receipt",
-    "get_order_stats",
     "create_order",
     "get_cart",
     "estimate_cart_price",
