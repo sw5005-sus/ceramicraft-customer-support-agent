@@ -74,7 +74,7 @@ def test_init_with_tracking_uri():
         mock_mlflow.set_experiment.assert_called_once_with("test-experiment")
         mock_autolog.assert_called_once_with(
             log_traces=True,
-            run_tracer_inline=True,
+            run_tracer_inline=False,
             silent=True,
         )
 

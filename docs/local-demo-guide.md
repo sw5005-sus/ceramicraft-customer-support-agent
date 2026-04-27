@@ -102,16 +102,16 @@ Events arrive as: `guarding` → `classifying` → `processing` → `reply` → 
 | 2 | **Browse** | "Show me ceramic bowls" → "Tell me about product 1" | `search_products` → `get_product` |
 | 3 | **Cart** (no token) | "Add product 1 to cart" | Guard: login prompt |
 | 4 | **Cart** (with token) | "Add product 1 to cart" → "What's in my cart?" | `add_to_cart` → `get_cart` |
-| 5 | **Order** | "Place an order with cart items using address 1" | Guard: confirmation prompt (`create_order` is sensitive) |
+| 5 | **Order** | "Place an order with cart items using address 1" | Domain prompt requires explicit confirmation before `create_order` |
 | 6 | **Review** | "I want to review Porcelain Teapot" → "5 stars, great quality!" | `search_products` → `create_review` |
-| 7 | **Account** | "Show my addresses" → "Delete address 1" | Guard: confirmation prompt (`delete_address` is sensitive) |
+| 7 | **Account** | "Show my addresses" → "Delete address 1" | Domain prompt requires explicit confirmation before `delete_address` |
 | 8 | **Escalate** | "I need to speak with a human" | Escalation message |
 
 > Use different `thread_id` per scenario to isolate context.
 
 ## 6. Traces & Cleanup
 
-**MLflow:** `http://localhost:5000` — view intent classification, tool calls, latency.
+**MLflow:** `http://localhost:5000` — prompt registry and best-effort LangChain traces for intent classification, tool calls, and latency.
 
 **Reset conversation:** `curl -s -X POST "http://localhost:8080/reset?thread_id=<id>"`
 

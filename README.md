@@ -31,7 +31,7 @@ Key components:
 - Input Guard — Pre-LLM screening: detects prompt injection / jailbreak attempts (7 pattern categories) and blocks before reaching any LLM node
 - Classifier — LLM-based intent detection: `browse`, `cart`, `order`, `review`, `account`, `chitchat`, `escalate`
 - Domain Subgraphs — Stateless ReAct agents, each with filtered MCP tools
-- Guard — Post-processing: auth checks + sensitive operation confirmation (`create_order`, `delete_address`, `confirm_receipt`)
+- Guard — Post-processing: auth-error normalization for unauthenticated requests. Sensitive operation confirmation is enforced by domain prompts before tool calls (`create_order`, `delete_address`, `confirm_receipt`).
 - PersistentMCPClient — Singleton; tool list cached at startup. Adding tools on MCP server requires no agent changes
 - AsyncPostgresSaver — Conversation checkpointer keyed by `thread_id`
 
@@ -99,7 +99,7 @@ OPENAI_API_KEY=... uv run deepeval test run tests/deepeval/ -v
 | `CS_AGENT_MAX_HISTORY` | Max messages to subgraphs | `20` |
 | `CS_AGENT_LANGSMITH_API_KEY` | LangSmith API key (forwarded to `LANGCHAIN_API_KEY`) | *(optional)* |
 | `CS_AGENT_LANGSMITH_PROJECT` | LangSmith project name | `customer-support-agent` |
-| `MLFLOW_TRACKING_URI` | MLflow server URL | *(optional)* |
+| `MLFLOW_TRACKING_URI` | MLflow server URL for prompt registry and tracing | *(optional)* |
 | `CS_AGENT_MLFLOW_EXPERIMENT_NAME` | MLflow experiment | `customer-support-agent` |
 | `CS_AGENT_CORS_ORIGINS` | Allowed CORS origins (comma-separated, or `*`). Empty = CORS disabled. | *(empty)* |
 

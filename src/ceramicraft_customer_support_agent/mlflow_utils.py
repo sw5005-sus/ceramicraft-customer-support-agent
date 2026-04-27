@@ -30,9 +30,11 @@ def init_mlflow_tracing() -> None:
     try:
         if hasattr(mlflow, "langchain") and hasattr(mlflow.langchain, "autolog"):
             try:
+                # Keep the tracer out of the main async task. Inline tracing can
+                # hit contextvars token-reset warnings under FastAPI + LangGraph.
                 mlflow.langchain.autolog(
                     log_traces=True,
-                    run_tracer_inline=True,
+                    run_tracer_inline=False,
                     silent=True,
                 )
             except TypeError:
