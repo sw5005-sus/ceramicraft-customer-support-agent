@@ -241,6 +241,9 @@ def _wrap_subgraph(subgraph: Any, domain: str) -> Callable:
         """Invoke a domain subgraph with the current state."""
         messages = _sanitize_messages(state.get("messages", []))
         messages = _trim_messages(messages, get_settings().CS_AGENT_MAX_HISTORY)
+        # Trimming can remove the parent AIMessage for a later ToolMessage,
+        # so sanitize again after applying the history window.
+        messages = _sanitize_messages(messages)
 
         # Inject auth context so the LLM knows whether to attempt
         # authenticated operations or ask the user to log in.

@@ -264,6 +264,27 @@ def test_trim_messages_exact_limit():
     assert result == msgs
 
 
+def test_sanitize_after_trim_removes_tool_orphan_created_by_window():
+    """A second sanitize pass is needed after trimming history.
+
+    A valid AIMessage/ToolMessage pair can become invalid if the history
+    window cuts off the parent AIMessage but keeps the ToolMessage.
+    """
+    old_human = _make_human_msg("show my cart")
+    ai = _make_ai_msg(
+        content="",
+        tool_calls=[{"id": "tc1", "name": "get_cart", "args": {}}],
+    )
+    tool = _make_tool_msg("tc1", "cart result")
+    new_human = _make_human_msg("yes, place the order")
+
+    sanitized = _sanitize_messages([old_human, ai, tool, new_human])
+    trimmed = _trim_messages(sanitized, 2)
+    result = _sanitize_messages(trimmed)
+
+    assert result == [new_human]
+
+
 # --- build_checkpointer tests ---
 
 
