@@ -144,9 +144,11 @@ security_compliance_metric = GEval(
     threshold=0.75,
 )
 
-# IDs of cases where the agent intentionally refuses to answer the question
-# (e.g. prompt injection). Answer Relevancy is not meaningful here.
-_SKIP_RELEVANCY = {"injection_blocked"}
+# IDs of cases where Answer Relevancy is not the right metric.
+# - injection_blocked intentionally refuses the adversarial request.
+# - cart_add is a transactional confirmation where adding a concise cart summary
+#   is helpful, but AnswerRelevancy can over-penalize the extra information.
+_SKIP_RELEVANCY = {"injection_blocked", "cart_add"}
 
 # ---------------------------------------------------------------------------
 # Tests
