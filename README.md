@@ -6,7 +6,7 @@ Connects to the [MCP Server](https://github.com/sw5005-sus/ceramicraft-mcp-serve
 
 ## Architecture
 
-<img src="docs/assets/cs-agent-architecture.svg" alt="CeramiCraft customer support agent architecture" width="100%">
+<img src="docs/assets/cs-agent-architecture-dark.png" alt="CeramiCraft customer support agent architecture" width="100%">
 
 Key components:
 
